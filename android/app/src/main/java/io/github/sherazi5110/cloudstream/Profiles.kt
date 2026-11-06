@@ -167,16 +167,19 @@ object ContentFilter {
         return api.name in f.extensions
     }
 
+    /**
+     * Single titles are only filtered in kids profiles. Like the official app, a grown-up profile sees every
+     * result of the extensions it has (the adult setting hides adult *extensions*, not titles).
+     */
     fun allows(item: SearchResponse): Boolean {
-        if (item.type == TvType.NSFW && !nsfwAllowed) return false
         val f = filter ?: return true
+        if (item.type == TvType.NSFW) return false
         if (item.type != null && item.type!!.name !in f.types) return false
         return !hasBlockedWord(f, item.name)
     }
 
     /** For a details page: rating, type, title, tags and plot. */
     fun allows(response: LoadResponse): Boolean {
-        if (response.type == TvType.NSFW && !nsfwAllowed) return false
         val f = filter ?: return true
         if (response.type == TvType.NSFW || response.type.name !in f.types) return false
         val age = response.contentRating?.let(::ageOf)

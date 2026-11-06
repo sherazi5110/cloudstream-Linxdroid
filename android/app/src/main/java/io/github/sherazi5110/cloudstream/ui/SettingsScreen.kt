@@ -171,7 +171,7 @@ private fun ProfilesSection() {
         Heading("Adult content")
         var nsfw by remember(version) { mutableStateOf(Settings.showNsfw) }
         var confirm by remember { mutableStateOf(false) }
-        SwitchRow("Show adult (NSFW) content", "For ${ProfileUi.current.name} only. Like the official app, adult extensions and titles are hidden until this is on.", nsfw) { on ->
+        SwitchRow("Show adult (NSFW) content", "For ${ProfileUi.current.name} only. Like the official app, adult (NSFW) extensions are hidden until this is on.", nsfw) { on ->
             if (!on) { Settings.showNsfw = false; nsfw = false; PluginManager.bumpVersion() } else confirm = true
         }
         if (confirm) SimpleDialog("Show adult content?", { confirm = false }, confirm = "Turn on", onConfirm = {

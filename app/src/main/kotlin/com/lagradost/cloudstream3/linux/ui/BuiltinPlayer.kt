@@ -211,7 +211,10 @@ class BuiltinPlayer(
         showControls()
     }
 
+    private var openedAt = 0L
+
     private fun open(link: ExtractorLink, startAt: Long?) {
+        openedAt = System.currentTimeMillis()
         current = link
         spinner.isVisible = true
         val quality = Qualities.getStringByInt(link.quality)
@@ -341,8 +344,14 @@ class BuiltinPlayer(
         }
 
         override fun finished(mediaPlayer: MediaPlayer) = fx {
-            position = duration
-            finish()
+            // VLC also says "finished" when a source fails to open or drops mid-way: only a real end
+            // (close to the length) ends the episode; anything else is a failed source.
+            if (System.currentTimeMillis() - openedAt < 2500) return@fx
+            val t = player.status().time().takeIf { it > 0 } ?: position
+            if (duration > 0 && t >= duration - maxOf(20_000L, duration / 20)) {
+                position = duration
+                finish()
+            } else onError()
         }
 
         override fun error(mediaPlayer: MediaPlayer) = fx { onError() }
