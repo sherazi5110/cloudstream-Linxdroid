@@ -102,6 +102,14 @@ object Screenshots {
             com.lagradost.cloudstream3.linux.Settings.downloadFolder = ""
             System.exit(0)
         }
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "nulllang") {
+            // An extension whose language is missing (null), as some real ones are.
+            val odd = object : MainAPI() { override var name = "OddExtension" }
+            MainAPI::class.java.getDeclaredField("lang").apply { isAccessible = true }.set(odd, null)
+            synchronized(com.lagradost.cloudstream3.APIHolder.allProviders) { com.lagradost.cloudstream3.APIHolder.allProviders.add(odd) }
+            window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-nulllang.png")
+            System.exit(0)
+        }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "settings7") {
             window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-extensions.png")
             window.openSettings("storage"); delay(1500); capture(window, "$prefix-settings-storage.png")

@@ -81,7 +81,7 @@ fun languageName(code: String) = languageNames[code.lowercase()] ?: code.upperca
 internal fun ProvidersSection() {
     var langs by remember { mutableStateOf(Settings.extensionLanguages) }
     val available = remember {
-        (Engine.allProviders().filter { it !is StremioApi }.map { it.lang.lowercase() } + listOf("en", "hi")).distinct().sortedBy { languageName(it) }
+        (Engine.allProviders().filter { it !is StremioApi }.mapNotNull { (it.lang as String?)?.trim()?.lowercase()?.takeIf { l -> l.isNotEmpty() } } + listOf("en", "hi")).distinct().sortedBy { languageName(it) }
     }
     Heading("Extension languages")
     Hint("Only extensions in these languages show on Home and in Search. None picked = all languages.")
@@ -323,7 +323,7 @@ fun ProviderTestsScreen() {
                         else -> Box(Modifier.size(24.dp))
                     }
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                        Text(r.api.name + "  ·  " + languageName(r.api.lang), style = MaterialTheme.typography.titleSmall)
+                        Text(r.api.name + "  ·  " + languageName((r.api.lang as String?) ?: "?"), style = MaterialTheme.typography.titleSmall)
                         Text(r.detail + if (t < 0) "" else "", style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis,
                             color = if (r.state == 3) Color(0xFFFF6B6B) else Palette.muted)
                     }
