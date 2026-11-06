@@ -102,13 +102,23 @@ class SettingsPage : StackPane(), Refreshable {
         val title: Node = if (parent == null) label(c.title, "h2") else hbox(12.0,
             button("Back", Icons.BACK, "btn-ghost", "btn-small") { open(parent.id) },
             vbox(0.0, label(parent.title, "faint", "small"), label(c.title, "h2")))
-        body.children.setAll(listOf(title) + c.build())
+        body.children.setAll(listOf(title) + safeBuild(c))
+    }
+
+    /** One broken section (an unusual extension, a bad setting) must never keep Settings from opening. */
+    private fun safeBuild(c: Category): List<Node> = try {
+        c.build()
+    } catch (t: Throwable) {
+        System.err.println("E/settings: section ${c.id} failed: $t")
+        t.printStackTrace()
+        listOf(section("Something went wrong",
+            row("This section couldn't be shown", "${t::class.java.simpleName}: ${t.message ?: ""} — please report it (Developer & logs has the details).", Region())))
     }
 
     private fun buildIndex() {
         index.clear()
         indexing = true
-        (categories + subPages).forEach { c -> indexCategory = c.id; c.build() }
+        (categories + subPages).forEach { c -> indexCategory = c.id; runCatching { c.build() }.onFailure { System.err.println("E/settings: index ${c.id}: $it") } }
         indexing = false
     }
 
@@ -453,7 +463,7 @@ class SettingsPage : StackPane(), Refreshable {
             row("Install new extensions automatically", "At startup, installs every extension of your repositories that isn't installed yet (in your languages, not broken or adult ones).",
                 Switch(Settings.autoInstallExtensions) { Settings.autoInstallExtensions = it }),
             row("Extension languages", "Only extensions in these languages show on Home and in Search. None picked = all.", multiChips(
-                (Engine.allProviders().filter { it !is StremioApi }.map { it.lang.lowercase() } + listOf("en", "hi")).distinct().sortedBy { langName(it) },
+                (Engine.allProviders().filter { it !is StremioApi }.mapNotNull { runCatching { (it.lang as String?)?.trim()?.lowercase() }.getOrNull()?.takeIf { l -> l.isNotEmpty() } } + listOf("en", "hi")).distinct().sortedBy { langName(it) },
                 ::langName, { Settings.extensionLanguages }) { Settings.extensionLanguages = it }),
             row("Preferred media", "Only extensions that offer these types show. None picked = everything.", multiChips(
                 listOf("Movie", "TvSeries", "Anime", "AsianDrama", "Cartoon", "Documentary", "Live"),
@@ -485,10 +495,8 @@ class SettingsPage : StackPane(), Refreshable {
         return box
     }
 
-    private val mediaLabels = mapOf("Movie" to "Movies", "TvSeries" to "TV series", "Anime" to "Anime", "AsianDrama" to "Asian dramas",
-        "Cartoon" to "Cartoons", "Documentary" to "Documentaries", "Live" to "Live")
-
-    private fun langName(code: String) = java.util.Locale(code).getDisplayLanguage(java.util.Locale.ENGLISH).takeIf { it.isNotBlank() && it != code } ?: code.uppercase()
+    private fun langName(code: String) = runCatching { java.util.Locale(code).getDisplayLanguage(java.util.Locale.ENGLISH) }.getOrNull()
+        ?.takeIf { it.isNotBlank() && it != code } ?: code.uppercase()
 
     /** Point an extension at a new domain when its site moves (until the extension is updated). */
     private fun siteAddresses(): Node {
@@ -974,3 +982,7 @@ class SettingsPage : StackPane(), Refreshable {
         return listOf(search, vbox(10.0, label("SHORTCUTS", "section-label"), list.apply { styleClass += "card"; pad(4.0, 18.0) }))
     }
 }
+
+/** Labels for the "Preferred media" chips (top level: Settings builds its sections while it is being created). */
+private val mediaLabels = mapOf("Movie" to "Movies", "TvSeries" to "TV series", "Anime" to "Anime", "AsianDrama" to "Asian dramas",
+    "Cartoon" to "Cartoons", "Documentary" to "Documentaries", "Live" to "Live")
