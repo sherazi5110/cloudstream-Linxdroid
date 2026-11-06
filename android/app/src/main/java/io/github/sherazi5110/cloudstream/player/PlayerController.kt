@@ -223,12 +223,15 @@ class PlayerController(
      * (close to the length) finishes the episode; otherwise it's a failed source, like Android's player.
      */
     private fun onEndReached() {
-        // A late event from the media that was just replaced (a source picked by hand): ignore it.
-        if (android.os.SystemClock.elapsedRealtime() - playCalledAt < 2_500) return
+        // A late event from the media that was just replaced (a source picked by hand): the player is
+        // already opening the new one, so it isn't "ended". Ignore it.
+        if (player.playerState != org.videolan.libvlc.interfaces.IMedia.State.Ended &&
+            android.os.SystemClock.elapsedRealtime() - playCalledAt < 5_000) return
         val len = length
         val t = player.time.takeIf { it > 0 } ?: time
         playing = false
-        if (started && !isLive && len > 0 && t >= len - maxOf(20_000L, len / 20)) {
+        // Some hosts send a short "error" clip instead of failing; a real episode is longer than 3 minutes.
+        if (started && !isLive && len >= 180_000 && t >= len - maxOf(20_000L, len / 20)) {
             ended = true
             save(finished = true)
         } else failover()
