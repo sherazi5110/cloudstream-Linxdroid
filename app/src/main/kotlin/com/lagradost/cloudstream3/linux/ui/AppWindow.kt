@@ -368,6 +368,10 @@ class AppWindow(val stage: Stage) : StackPane() {
                 val updated = withContext(Engine.dispatcher) { runCatching { PluginManager.updateAll() }.getOrDefault(emptyList()) }
                 if (updated.isNotEmpty()) Toasts.show("Updated ${updated.joinToString()}")
             }
+            if (Settings.autoInstallExtensions) {
+                val added = withContext(Engine.dispatcher) { runCatching { PluginManager.installMissing(includeNew = true) }.getOrDefault(emptyList()) }
+                if (added.isNotEmpty()) Toasts.show("Installed ${added.size} new extension(s)")
+            }
             if (Settings.checkUpdates && System.currentTimeMillis() - Updates.lastCheck > 20 * 3600_000L &&
                 System.getenv("CS_SCREENSHOT") == null) {
                 Updates.lastCheck = System.currentTimeMillis()

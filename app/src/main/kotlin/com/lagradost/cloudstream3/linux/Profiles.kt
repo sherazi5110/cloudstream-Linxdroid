@@ -163,6 +163,13 @@ object ContentFilter {
 
     fun allows(api: MainAPI): Boolean {
         if (TvType.NSFW in api.supportedTypes && !nsfwAllowed) return false
+        // Settings → Extensions: languages and media types to show (empty = all). Stremio add-ons always show.
+        if (api !is StremioApi) {
+            val langs = Settings.extensionLanguages
+            if (langs.isNotEmpty() && api.lang.lowercase() !in langs) return false
+            val types = Settings.mediaTypes
+            if (types.isNotEmpty() && api.supportedTypes.none { it.name in types }) return false
+        }
         val f = filter ?: return true
         return api.name in f.extensions
     }

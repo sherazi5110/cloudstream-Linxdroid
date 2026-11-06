@@ -450,6 +450,15 @@ class SettingsPage : StackPane(), Refreshable {
                 button("Open", Icons.EXTENSION, "btn-accent", "btn-small") { Nav.window.show(Tab.EXTENSIONS) }),
             row("Update on startup", "Checks your repositories for newer versions each time the app starts.",
                 Switch(Settings.autoUpdateExtensions) { Settings.autoUpdateExtensions = it }),
+            row("Install new extensions automatically", "At startup, installs every extension of your repositories that isn't installed yet (in your languages, not broken or adult ones).",
+                Switch(Settings.autoInstallExtensions) { Settings.autoInstallExtensions = it }),
+            row("Extension languages", "Only extensions in these languages show on Home and in Search. None picked = all.", multiChips(
+                (Engine.allProviders().filter { it !is StremioApi }.map { it.lang.lowercase() } + listOf("en", "hi")).distinct().sortedBy { langName(it) },
+                ::langName, { Settings.extensionLanguages }) { Settings.extensionLanguages = it }),
+            row("Preferred media", "Only extensions that offer these types show. None picked = everything.", multiChips(
+                listOf("Movie", "TvSeries", "Anime", "AsianDrama", "Cartoon", "Documentary", "Live"),
+                { mediaLabels[it] ?: it },
+                { Settings.mediaTypes }) { Settings.mediaTypes = it }),
             row("Translated extensions", "Android extensions are converted for Linux once and cached. Clearing forces a fresh conversion on next start.",
                 button("Clear", Icons.DELETE, "btn-ghost", "btn-small") {
                     StorageInfo.clear(File(com.lagradost.cloudstream3.linux.Platform.context.getCacheDir(), "translated"))
@@ -458,6 +467,28 @@ class SettingsPage : StackPane(), Refreshable {
         ),
         siteAddresses(),
     )
+
+    /** Toggle chips over [options] for a set setting; picking none means "all". */
+    private fun multiChips(options: List<String>, label: (String) -> String, get: () -> Set<String>, set: (Set<String>) -> Unit): Node {
+        val box = javafx.scene.layout.FlowPane(6.0, 6.0).apply { maxWidth = 460.0 }
+        fun render() {
+            val now = get()
+            box.children.setAll(options.map { o ->
+                label(label(o), "chip").apply {
+                    minWidth = Region.USE_PREF_SIZE
+                    if (o in now) styleClass += "selected"
+                    onClick { set(if (o in get()) get() - o else get() + o); render() }
+                }
+            })
+        }
+        render()
+        return box
+    }
+
+    private val mediaLabels = mapOf("Movie" to "Movies", "TvSeries" to "TV series", "Anime" to "Anime", "AsianDrama" to "Asian dramas",
+        "Cartoon" to "Cartoons", "Documentary" to "Documentaries", "Live" to "Live")
+
+    private fun langName(code: String) = java.util.Locale(code).getDisplayLanguage(java.util.Locale.ENGLISH).takeIf { it.isNotBlank() && it != code } ?: code.uppercase()
 
     /** Point an extension at a new domain when its site moves (until the extension is updated). */
     private fun siteAddresses(): Node {
@@ -637,6 +668,36 @@ class SettingsPage : StackPane(), Refreshable {
                     button("Open", Icons.FOLDER, "btn-ghost", "btn-small") { openFolder(com.lagradost.cloudstream3.linux.Downloads.folder()) },
                     if (Settings.downloadFolder.isNotBlank()) button("Default", Icons.REFRESH, "btn-ghost", "btn-small") { Settings.downloadFolder = ""; open("storage") } else Region(),
                 )),
+                row("Downloads at the same time", null, javafx.scene.control.ComboBox<Int>().apply {
+                    items.setAll(1, 2, 3, 4, 5); value = Settings.parallelDownloads
+                    setOnAction { Settings.parallelDownloads = value }
+                }),
+            ),
+            section("Backup",
+                row("Back up", "Settings, profiles, My list, history and progress, repositories, the list of extensions and their settings, Live TV sources and Stremio add-ons, in one file. It also works with the Android app.",
+                    button("Back up…", Icons.DOWNLOAD, "btn-ghost", "btn-small") {
+                        val file = javafx.stage.FileChooser().apply {
+                            title = "Save backup"; initialFileName = com.lagradost.cloudstream3.linux.Backup.fileName()
+                            extensionFilters += javafx.stage.FileChooser.ExtensionFilter("Backup (*.json)", "*.json")
+                        }.showSaveDialog(scene?.window) ?: return@button
+                        runCatching { file.writeText(com.lagradost.cloudstream3.linux.Backup.export()) }
+                            .onSuccess { Toasts.show("Backup saved to ${file.name}") }.onFailure { Toasts.show("Couldn't save: ${it.message}") }
+                    }),
+                row("Restore", "Replaces settings, profiles and library with the backup's, then downloads its extensions. Restart the app afterwards.",
+                    button("Restore…", Icons.REFRESH, "btn-ghost", "btn-small") {
+                        val file = javafx.stage.FileChooser().apply {
+                            title = "Restore backup"; extensionFilters += javafx.stage.FileChooser.ExtensionFilter("Backup (*.json)", "*.json")
+                        }.showOpenDialog(scene?.window) ?: return@button
+                        if (!confirm("Replace your settings, profiles and library with this backup?")) return@button
+                        ui.launch {
+                            val r = withContext(Dispatchers.IO) { runCatching { com.lagradost.cloudstream3.linux.Backup.import(file.readText()) } }
+                            r.onFailure { Toasts.show("Couldn't restore: ${it.message}") }.onSuccess {
+                                Toasts.show("Restored. Downloading extensions…")
+                                val got = withContext(Dispatchers.IO) { runCatching { com.lagradost.cloudstream3.linux.PluginManager.installMissing(false) }.getOrDefault(emptyList()) }
+                                Toasts.show("Restored${if (got.isNotEmpty()) " with ${got.size} extension(s)" else ""}. Restart the app to finish.", seconds = 10.0)
+                            }
+                        }
+                    }),
             ),
             section("Reset",
                 row("Reset settings", "App settings and this profile's theme, player and home settings go back to defaults. Extensions, repositories, profiles, library and history are kept.",

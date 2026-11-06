@@ -79,6 +79,7 @@ fun AppRoot() {
                 if (top == null) BottomBar()
             }
             ProfileOverlays()
+            UpdateDialog()
         }
     }
 }
@@ -101,6 +102,7 @@ private fun Content(top: Screen?) {
         is Screen.Details -> holder.SaveableStateProvider("details|${top.apiName}|${top.url}") { DetailsScreen(top) }
         is Screen.Catalog -> CatalogScreen(top)
         is Screen.Repository -> RepositoryScreen(top)
+        is Screen.ProviderTests -> ProviderTestsScreen()
         is Screen.SettingsPage -> SettingsPageScreen(top)
         is Screen.Player -> Unit
     }

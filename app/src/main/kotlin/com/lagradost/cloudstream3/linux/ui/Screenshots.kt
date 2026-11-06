@@ -102,6 +102,11 @@ object Screenshots {
             com.lagradost.cloudstream3.linux.Settings.downloadFolder = ""
             System.exit(0)
         }
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "settings7") {
+            window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-extensions.png")
+            window.openSettings("storage"); delay(1500); capture(window, "$prefix-settings-storage.png")
+            System.exit(0)
+        }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "v7") {
             val m = "http://localhost:8766"
             com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", m)

@@ -25,6 +25,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Palette
@@ -65,6 +68,9 @@ import kotlinx.coroutines.withContext
 
 enum class Section(val title: String, val text: String, val icon: ImageVector) {
     EXTENSIONS("Extensions", "Repositories, Stremio add-ons", Icons.Filled.Extension),
+    PROVIDERS("Providers", "Languages, media types, extension updates, test all", Icons.Filled.Language),
+    GENERAL("General", "Downloads, site addresses, GitHub proxy", Icons.Filled.Tune),
+    BACKUP("Updates and backup", "App updates, back up and restore", Icons.Filled.Backup),
     PROFILES("Profiles", "Who's watching, kids, adult content", Icons.Filled.People),
     APPEARANCE("Appearance", "Theme, accent colour, layout", Icons.Filled.Palette),
     PLAYER("Player", "Sources, quality, subtitles, audio", Icons.Filled.PlayCircle),
@@ -135,15 +141,18 @@ private fun SectionContent(s: Section) {
         Section.METADATA -> MetadataSection()
         Section.NETWORK -> NetworkSection()
         Section.ABOUT -> AboutSection()
+        Section.PROVIDERS -> ProvidersSection()
+        Section.GENERAL -> GeneralSection()
+        Section.BACKUP -> BackupSection()
     }
 }
 
 @Composable
-private fun Heading(text: String) = Text(text, style = MaterialTheme.typography.titleSmall, color = Palette.accent,
+internal fun Heading(text: String) = Text(text, style = MaterialTheme.typography.titleSmall, color = Palette.accent,
     modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
 
 @Composable
-private fun Hint(text: String) = Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 4.dp))
+internal fun Hint(text: String) = Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 4.dp))
 
 // ---------------------------------------------------------------- sections
 

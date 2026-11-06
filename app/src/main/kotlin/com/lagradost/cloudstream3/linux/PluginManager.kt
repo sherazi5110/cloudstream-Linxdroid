@@ -181,6 +181,30 @@ object PluginManager {
         saveInstalled(installed().filter { it.internalName != internalName })
     }
 
+    /**
+     * After a restore (or with "Install new extensions automatically" on): downloads installed extensions whose
+     * file is missing, and with [includeNew] every extension of the added repositories that isn't installed yet
+     * (not broken ones, not adult ones unless allowed, only the chosen languages). Returns their names.
+     */
+    suspend fun installMissing(includeNew: Boolean): List<String> {
+        val have = installed().associateBy { it.internalName }
+        val done = mutableListOf<String>()
+        val langs = Settings.extensionLanguages
+        for (repo in RepositoryManager.getRepositories()) {
+            val available = RepositoryManager.getRepoPlugins(repo) ?: continue
+            for (w in available) {
+                val p = w.plugin
+                val local = have[p.internalName]
+                val missingFile = local != null && !File(local.filePath).exists()
+                val wanted = local == null && includeNew && p.status != 0 &&
+                    (p.tvTypes.orEmpty().none { it.equals("NSFW", true) } || ContentFilter.nsfwAllowed) &&
+                    (langs.isEmpty() || p.language == null || p.language!!.lowercase() in langs)
+                if ((missingFile || wanted) && install(w).isSuccess) done += p.name
+            }
+        }
+        return done
+    }
+
     /** Returns the plugins whose repository advertises a higher version, and installs them. */
     suspend fun updateAll(): List<String> {
         val byRepo = installed().filter { it.isOnline && it.repositoryUrl != null }.groupBy { it.repositoryUrl!! }
