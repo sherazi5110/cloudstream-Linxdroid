@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -83,6 +85,8 @@ fun ExtensionsScreen() {
     }
 
     var stremio by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val shownInstalled = remember(installed, query) { installed.filter { matches(query, it.name ?: it.internalName, it.internalName) } }
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Extensions", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
@@ -127,7 +131,8 @@ fun ExtensionsScreen() {
                 }
             }
             item { SectionTitle("Installed · ${installed.size}", Modifier.padding(top = 12.dp)) }
-            items(installed, key = { "plugin|${it.internalName}" }) { data ->
+            if (installed.size > 6) item { ExtensionSearch(query) { query = it } }
+            items(shownInstalled, key = { "plugin|${it.internalName}" }) { data ->
                 val failure = PluginManager.failures[data.internalName]
                 val loaded = PluginManager.loaded.values.firstOrNull { it.data.internalName == data.internalName }
                 val detail = when {
@@ -202,6 +207,25 @@ private fun ListRow(
     }
 }
 
+/** Every word of [query] appears in one of [fields] (case ignored). */
+private fun matches(query: String, vararg fields: String?): Boolean {
+    val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    if (words.isEmpty()) return true
+    val text = fields.filterNotNull().joinToString(" ").lowercase()
+    return words.all { it in text }
+}
+
+@Composable
+private fun ExtensionSearch(query: String, hint: String = "Search extensions", onChange: (String) -> Unit) {
+    OutlinedTextField(query, onChange, singleLine = true, placeholder = { Text(hint) },
+        leadingIcon = { Icon(Icons.Filled.Search, null) },
+        trailingIcon = { if (query.isNotEmpty()) IconAction(Icons.Filled.Close, "Clear") { onChange("") } },
+        shape = RoundedCornerShape(50),
+        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Palette.surface, focusedContainerColor = Palette.surface,
+            unfocusedBorderColor = Color.Transparent, focusedBorderColor = Palette.accent),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp))
+}
+
 private val statusText = mapOf(0 to "Down", 2 to "Slow", 3 to "Beta")
 
 /** One repository's extensions, with install / update / uninstall. */
@@ -218,6 +242,11 @@ fun RepositoryScreen(screen: Screen.Repository) {
         if (list == null) failed = true else plugins = list.sortedBy { it.plugin.name.lowercase() }
     }
     val installed = remember(version) { PluginManager.installed().associateBy { it.internalName } }
+    var query by remember(screen) { mutableStateOf("") }
+    val shown = remember(plugins, query) {
+        plugins.orEmpty().filter { w -> val p = w.plugin
+            matches(query, p.name, p.internalName, p.description, p.language, p.tvTypes?.joinToString(" ")) }
+    }
 
     Column(Modifier.fillMaxSize()) {
         BackBar(screen.name)
@@ -226,6 +255,10 @@ fun RepositoryScreen(screen: Screen.Repository) {
             plugins == null -> Spinner(Modifier.fillMaxWidth().height(200.dp))
             else -> LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
+                    ExtensionSearch(query, "Search ${plugins.orEmpty().size} extensions (name, language, type)") { query = it }
+                }
+                if (shown.isEmpty()) item { Text("No extensions match \"$query\".", style = MaterialTheme.typography.bodyMedium, color = Palette.muted) }
+                if (query.isBlank()) item {
                     PillButton("Install all", Icons.Filled.Download, Modifier.padding(bottom = 8.dp)) {
                         scope.launch {
                             plugins.orEmpty().filter { it.plugin.internalName !in installed && it.plugin.status != 0 }.forEach { w ->
@@ -236,7 +269,7 @@ fun RepositoryScreen(screen: Screen.Repository) {
                         }
                     }
                 }
-                items(plugins.orEmpty(), key = { it.plugin.internalName }) { w ->
+                items(shown, key = { it.plugin.internalName }) { w ->
                     val p = w.plugin
                     val have = installed[p.internalName]
                     val detail = listOfNotNull(

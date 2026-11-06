@@ -211,7 +211,10 @@ class BuiltinPlayer(
         showControls()
     }
 
+    private var openedAt = 0L
+
     private fun open(link: ExtractorLink, startAt: Long?) {
+        openedAt = System.currentTimeMillis()
         current = link
         spinner.isVisible = true
         val quality = Qualities.getStringByInt(link.quality)
@@ -277,7 +280,7 @@ class BuiltinPlayer(
         val then = leaving
         when {
             then != null -> then()
-            duration > 0 && position.toDouble() / duration > 0.92 && next != null ->
+            duration >= 180_000 && position.toDouble() / duration > 0.92 && next != null ->
                 if (Settings.autoPlayNext) Playback.open(api, response, next)
                 else Toasts.show("Up next: ${next.label}", "Play" to { Playback.open(api, response, next) }, 12.0)
         }
@@ -341,8 +344,16 @@ class BuiltinPlayer(
         }
 
         override fun finished(mediaPlayer: MediaPlayer) = fx {
-            position = duration
-            finish()
+            // VLC also says "finished" when a source fails to open or drops mid-way: only a real end
+            // (close to the length) ends the episode; anything else is a failed source.
+            // A late event from the source that was just replaced: the player is already opening the new one.
+            if (player.status().state() != uk.co.caprica.vlcj.player.base.State.ENDED && System.currentTimeMillis() - openedAt < 5000) return@fx
+            val t = player.status().time().takeIf { it > 0 } ?: position
+            // Some hosts send a short "error" clip instead of failing; a real episode is longer than 3 minutes.
+            if (duration >= 180_000 && t >= duration - maxOf(20_000L, duration / 20)) {
+                position = duration
+                finish()
+            } else onError()
         }
 
         override fun error(mediaPlayer: MediaPlayer) = fx { onError() }

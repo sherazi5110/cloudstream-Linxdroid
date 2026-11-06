@@ -69,7 +69,6 @@ object Downloads {
         val isEpisode get() = label != null
     }
 
-    private const val PARALLEL = 2
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val items = ConcurrentHashMap<String, Item>()
     private val jobs = ConcurrentHashMap<String, Job>()
@@ -192,7 +191,7 @@ object Downloads {
     @Synchronized
     private fun schedule() {
         val running = items.values.count { it.state == State.RUNNING && jobs[it.id]?.isActive == true }
-        val waiting = items.values.filter { it.state == State.QUEUED }.sortedBy { it.created }.take((PARALLEL - running).coerceAtLeast(0))
+        val waiting = items.values.filter { it.state == State.QUEUED }.sortedBy { it.created }.take((Settings.parallelDownloads - running).coerceAtLeast(0))
         for (item in waiting) {
             items[item.id] = item.copy(state = State.RUNNING)
             jobs[item.id] = scope.launch {

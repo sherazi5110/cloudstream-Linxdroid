@@ -26,6 +26,8 @@ sealed interface Screen {
     /** A Settings section opened on its own (portrait). */
     data class SettingsPage(val section: String) : Screen
     data class Repository(val url: String, val name: String) : Screen
+    /** Settings → Providers → Test all extensions. */
+    data object ProviderTests : Screen
 }
 
 /** A tiny back stack: one per app, kept in memory (the activity survives rotation). */

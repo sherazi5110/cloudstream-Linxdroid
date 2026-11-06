@@ -70,6 +70,7 @@ object Engine {
 
     /** Every loaded extension and add-on, whatever the profile. */
     fun allProviders(): List<MainAPI> = (APIHolder.allProviders.toList() + StremioAddons.apis())
+        .onEach { SiteOverrides.apply(it) }
         .sortedBy { it.name.lowercase() }
 
     fun provider(name: String): MainAPI? = providers().firstOrNull { it.name.equals(name, ignoreCase = true) }

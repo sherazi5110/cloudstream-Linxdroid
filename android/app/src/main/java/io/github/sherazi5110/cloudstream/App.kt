@@ -51,6 +51,20 @@ object App {
             if (failures.isNotEmpty()) Log.w("plugins", "Failed: ${failures.keys}")
             // Carry on with downloads that were running when the app closed.
             runCatching { Downloads.init() }
+            startupChecks()
+        }
+    }
+
+    /** Extension updates / new extensions and the app update check, like the official app at start. */
+    private suspend fun startupChecks() {
+        if (Settings.autoUpdateExtensions) runCatching { PluginManager.updateAll() }.getOrNull()
+            ?.takeIf { it.isNotEmpty() }?.let { toast("Updated ${it.joinToString()}") }
+        if (Settings.autoInstallExtensions) runCatching { PluginManager.installMissing(includeNew = true) }.getOrNull()
+            ?.takeIf { it.isNotEmpty() }?.let { toast("Installed ${it.size} new extension(s)") }
+        if (Settings.checkUpdates && System.currentTimeMillis() - Updates.lastCheck > 20 * 3600_000L) {
+            Updates.lastCheck = System.currentTimeMillis()
+            val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: return
+            runCatching { Updates.check(version) }.getOrNull()?.let { io.github.sherazi5110.cloudstream.ui.UpdateState.available = it }
         }
     }
 

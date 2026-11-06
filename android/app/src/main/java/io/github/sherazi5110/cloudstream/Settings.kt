@@ -164,4 +164,24 @@ object Settings {
     var lastHomeProvider: String?
         get() = string("last_home_provider", "").ifBlank { null }
         set(v) = put("last_home_provider", v ?: "")
+
+    /** Extension languages to show (lowercase codes such as "en", "hi"); empty = all, like the official app. */
+    var extensionLanguages: Set<String>
+        get() = string("extension_languages", "").split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+        set(v) = put("extension_languages", v.joinToString(","))
+
+    /** Media types to show extensions for (TvType names); empty = all ("Preferred media" in the official app). */
+    var mediaTypes: Set<String>
+        get() = string("media_types", "").split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        set(v) = put("media_types", v.joinToString(","))
+
+    /** Install every new extension of the added repositories by itself, at startup. */
+    var autoInstallExtensions: Boolean
+        get() = string("auto_install_extensions", "false").toBoolean()
+        set(v) = put("auto_install_extensions", v)
+
+    /** Downloads running at the same time (1–5). */
+    var parallelDownloads: Int
+        get() = string("parallel_downloads", "2").toIntOrNull()?.coerceIn(1, 5) ?: 2
+        set(v) = put("parallel_downloads", v.coerceIn(1, 5))
 }

@@ -107,6 +107,7 @@ class PlayerController(
     private var saver: Job? = null
     val isLive = live || response is LiveStreamLoadResponse
     private var languagesApplied = false
+    private var playCalledAt = 0L
 
     /** Intro/recap/credits times (anime, from AniSkip) and the one the playhead is in, if any. */
     var segments by mutableStateOf<List<SkipTimes.Segment>>(emptyList())
@@ -132,7 +133,7 @@ class PlayerController(
                 MediaPlayer.Event.Buffering -> buffering = e.buffering < 100f
                 MediaPlayer.Event.TimeChanged -> { time = e.timeChanged; if (buffering && playing) buffering = false; updateSkip(e.timeChanged) }
                 MediaPlayer.Event.LengthChanged -> { length = e.lengthChanged; loadSegments() }
-                MediaPlayer.Event.EndReached -> { playing = false; ended = true; save(finished = true) }
+                MediaPlayer.Event.EndReached -> main.post { onEndReached() }
                 MediaPlayer.Event.EncounteredError -> main.post { failover() }
             }
         }
@@ -182,6 +183,7 @@ class PlayerController(
     /** Starts [link], keeping the current position when switching sources mid-playback. */
     fun play(link: ExtractorLink) {
         grace?.cancel()
+        playCalledAt = android.os.SystemClock.elapsedRealtime()
         val keep = if (started) player.time.takeIf { it > 0 } ?: startAt else startAt
         current = link
         tried += link.url
@@ -214,6 +216,25 @@ class PlayerController(
         player.rate = speed
         player.videoScale = zoom.scale
         selectedSubtitle?.let { url -> subtitles.firstOrNull { it.url == url }?.let { addSubtitle(it) } }
+    }
+
+    /**
+     * libVLC also reports "end reached" when a source fails to open or drops mid-way. Only a real end
+     * (close to the length) finishes the episode; otherwise it's a failed source, like Android's player.
+     */
+    private fun onEndReached() {
+        // A late event from the media that was just replaced (a source picked by hand): the player is
+        // already opening the new one, so it isn't "ended". Ignore it.
+        if (player.playerState != org.videolan.libvlc.interfaces.IMedia.State.Ended &&
+            android.os.SystemClock.elapsedRealtime() - playCalledAt < 5_000) return
+        val len = length
+        val t = player.time.takeIf { it > 0 } ?: time
+        playing = false
+        // Some hosts send a short "error" clip instead of failing; a real episode is longer than 3 minutes.
+        if (started && !isLive && len >= 180_000 && t >= len - maxOf(20_000L, len / 20)) {
+            ended = true
+            save(finished = true)
+        } else failover()
     }
 
     /** Skips to the next source not tried yet ("Next source" on the loading screen). */

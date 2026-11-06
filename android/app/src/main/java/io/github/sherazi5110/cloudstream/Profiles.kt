@@ -163,20 +163,30 @@ object ContentFilter {
 
     fun allows(api: MainAPI): Boolean {
         if (TvType.NSFW in api.supportedTypes && !nsfwAllowed) return false
+        // Settings → Extensions: languages and media types to show (empty = all). Stremio add-ons always show.
+        if (api !is StremioApi) {
+            val langs = Settings.extensionLanguages
+            if (langs.isNotEmpty() && api.lang.lowercase() !in langs) return false
+            val types = Settings.mediaTypes
+            if (types.isNotEmpty() && api.supportedTypes.none { it.name in types }) return false
+        }
         val f = filter ?: return true
         return api.name in f.extensions
     }
 
+    /**
+     * Single titles are only filtered in kids profiles. Like the official app, a grown-up profile sees every
+     * result of the extensions it has (the adult setting hides adult *extensions*, not titles).
+     */
     fun allows(item: SearchResponse): Boolean {
-        if (item.type == TvType.NSFW && !nsfwAllowed) return false
         val f = filter ?: return true
+        if (item.type == TvType.NSFW) return false
         if (item.type != null && item.type!!.name !in f.types) return false
         return !hasBlockedWord(f, item.name)
     }
 
     /** For a details page: rating, type, title, tags and plot. */
     fun allows(response: LoadResponse): Boolean {
-        if (response.type == TvType.NSFW && !nsfwAllowed) return false
         val f = filter ?: return true
         if (response.type == TvType.NSFW || response.type.name !in f.types) return false
         val age = response.contentRating?.let(::ageOf)
