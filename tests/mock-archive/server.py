@@ -240,6 +240,11 @@ class Handler(BaseHTTPRequestHandler):
             if not os.path.exists(poster):
                 poster = os.path.join(MEDIA, "poster.png")
             return self.send(200, open(poster, "rb").read(), "image/jpeg")
+        if parts == ["addon-config", "manifest.json"]:
+            # An add-on that must be configured first (debrid add-ons and the like).
+            return self.send(200, json.dumps({"id": "org.test.config", "version": "1.0.0", "name": "Config Add-on", "types": ["movie"],
+                                              "resources": ["stream"], "catalogs": [], "idPrefixes": ["tt"],
+                                              "behaviorHints": {"configurable": True, "configurationRequired": True}}))
         if len(parts) == 2 and parts[0] == "open":
             # A video any browser can play directly (no Referer or token needed).
             path = os.path.join(MEDIA, os.path.basename(parts[1]))

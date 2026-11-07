@@ -78,10 +78,16 @@ async function fetchJson(url, ms = 20000) {
   } finally { clearTimeout(timer); }
 }
 
-async function installAddon(input) {
+class NeedsConfig extends Error {
+  constructor(m, url) { super(`${m.name} needs setting up first`); this.manifest = m; this.configure = baseOf(url) + "/configure"; }
+}
+
+async function installAddon(input, force) {
   const url = manifestUrl(input);
   const m = await fetchJson(url);
   if (!m || !m.id || !m.resources) throw new Error("That isn't a Stremio add-on manifest");
+  // The plain link of a configurable add-on (debrid services, etc.) has no account in it: it returns nothing.
+  if (!force && m.behaviorHints && m.behaviorHints.configurationRequired) throw new NeedsConfig(m, url);
   const list = addons().filter((a) => a.manifest.id !== m.id);
   list.push({ url, manifest: m });
   store.set("addons", list);
@@ -534,7 +540,8 @@ async function more() {
       <button class="btn primary wide" style="margin-top:10px">${icons.add} Install</button></form>
     <div class="note">Paste the <b>manifest link</b> of a Stremio add-on (the same ones Stremio and Nuvio use; the add-on's
       website shows it after you configure it). Add-ons that give <b>direct https video links</b> play best here.
-      Torrent add-ons and links that need special headers only work in the CloudStream apps.</div>
+      Torrent add-ons and links that need special headers only work in the CloudStream apps.
+      <b>Debrid add-ons</b> work when set up with your account, but on iPhone MKV files often won't play: pick MP4 results.</div>
     <div id="addons">${list.map((a, i) => `<div class="addon">${a.manifest.logo ? `<img src="${esc(a.manifest.logo)}" alt="" referrerpolicy="no-referrer">` : `<div class="noimg">${esc(a.manifest.name.slice(0, 2))}</div>`}
       <div class="t"><b>${esc(a.manifest.name)}</b><span>${esc([(a.manifest.resources || []).map((r) => typeof r === "string" ? r : r.name).join(", "), a.manifest.description].filter(Boolean).join(" · "))}</span></div>
       <button class="icon-btn" data-rm="${i}" aria-label="Remove">${icons.trash}</button></div>`).join("") || '<div class="empty">No add-ons installed.</div>'}</div>
@@ -552,7 +559,21 @@ async function more() {
     e.preventDefault();
     const btn = form.querySelector("button"); btn.disabled = true;
     try { const m = await installAddon(form.url.value); toast(`Installed ${m.name}`); more(); }
-    catch (err) { toast(err.message); btn.disabled = false; }
+    catch (err) {
+      btn.disabled = false;
+      if (!(err instanceof NeedsConfig)) return toast(err.message);
+      sheet(`Set up ${err.manifest.name}`, `<p class="muted">This add-on needs your settings (for example your debrid account key) before it can find streams.</p>
+        <ol class="muted small" style="padding-left:18px;line-height:1.6"><li>Tap <b>Open setup page</b> and fill it in.</li>
+        <li>At the end, copy the <b>install link</b> it gives you (often “Copy link” or “Install”; it starts with <b>stremio://</b> or ends with <b>manifest.json</b>).</li>
+        <li>Come back here and paste that link into the box, then tap Install.</li></ol>
+        <a class="btn primary wide" href="${esc(err.configure)}" target="_blank" rel="noopener">Open setup page</a>
+        <button class="btn wide" style="margin-top:10px" id="anyway">Install without setup</button>`, (el, close) => {
+        el.querySelector("#anyway").addEventListener("click", async () => {
+          close();
+          try { const m = await installAddon(form.url.value, true); toast(`Installed ${m.name} (not set up)`); more(); } catch (e2) { toast(e2.message); }
+        });
+      });
+    }
   });
   $view.querySelectorAll("[data-rm]").forEach((b) => b.addEventListener("click", () => {
     const l = addons(); const [gone] = l.splice(+b.dataset.rm, 1);
