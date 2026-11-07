@@ -27,12 +27,25 @@ private const val USAGE = """cloudstream-linux — run CloudStream extensions on
   key get <key> | key set <key> <value>   read/write the key store extensions use (CloudStreamApp.getKey)
   doctor                                  print diagnostics for bug reports
   compat <file.cs3|file.jar>              check an extension for APIs missing on Linux (doesn't run it)
+  backup <file.json>                      save settings, profiles, library, repositories and extension list
+  restore <file.json>                     restore a backup (from the Linux or Android app) and download its extensions
+  web-password [password]                 set the web app's password (asks if not given)
+  serve [--host 127.0.0.1] [--port 8080]  run the phone web app server (see docs/WEB-APP.md)
 """
 
 fun main(args: Array<String>) {
     // cloudstreamrepo:// links are registered as a URL handler by the .desktop file, like
     // the intent filter in upstream AndroidManifest.xml.
     val repoLink = args.firstOrNull()?.takeIf { it.startsWith("cloudstreamrepo://") || it.startsWith("https://cs.repo") }
+    if (args.firstOrNull() == "serve") {
+        Logs.init()
+        Platform.init()
+        Network.init()
+        val host = args.toList().option("--host") ?: "127.0.0.1"
+        val port = args.toList().option("--port")?.toIntOrNull() ?: 8080
+        runCatching { WebServer.serve(host, port) }.onFailure { System.err.println("error: ${it.message ?: it}"); exitProcess(1) }
+        return
+    }
     if (args.isEmpty() || args[0] == "gui" || repoLink != null) {
         Logs.init()
         Platform.init()
@@ -72,6 +85,28 @@ suspend fun cli(args: List<String>): Int {
     if (needsPlugins) PluginManager.loadAll().forEach { (n, e) -> System.err.println("warn: $n failed to load: $e") }
 
     when (pos[0]) {
+        "backup" -> {
+            val file = File(pos.getOrNull(1) ?: Backup.fileName())
+            file.writeText(Backup.export())
+            println("Backup saved to ${file.absolutePath}")
+        }
+        "restore" -> {
+            val n = Backup.import(File(pos[1]).readText())
+            println("Restored $n settings stores. Downloading extensions…")
+            val got = PluginManager.installMissing(includeNew = false)
+            println(if (got.isEmpty()) "No extensions to download." else "Installed ${got.joinToString()}")
+            println("Restart the server to use them (sudo systemctl restart cloudstream).")
+        }
+        "web-password" -> {
+            val pw = pos.getOrNull(1) ?: System.console()?.let { c ->
+                val a1 = String(c.readPassword("New web app password: ") ?: CharArray(0))
+                val a2 = String(c.readPassword("Again: ") ?: CharArray(0))
+                require(a1 == a2) { "The two passwords don't match" }
+                a1
+            } ?: error("Give the password: cloudstream-linux web-password <password>")
+            WebServer.setPassword(pw)
+            println("Password set. Every device has to log in again.")
+        }
         "repo" -> when (pos.getOrNull(1)) {
             "add" -> RepositoryManager.addRepository(pos[2]).let { println("Added ${it.name} -> ${it.url}") }
             "remove" -> RepositoryManager.removeRepository(pos[2]).also { println("Removed ${pos[2]}") }

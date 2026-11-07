@@ -44,12 +44,20 @@ object StreamProxy {
     /** Returns a loopback URL that fetches [url] with [headers]. */
     fun wrap(url: String, headers: Map<String, String>): String {
         val s = start()
+        return "http://127.0.0.1:${s.address.port}" + register(url, headers)
+    }
+
+    /**
+     * Registers [url] with [headers] and returns its path ("/s/<id>/<name>"), for a server that serves
+     * [handle] itself (the web app's server, see WebServer).
+     */
+    fun register(url: String, headers: Map<String, String>): String {
         val id = id(url, headers)
         targets[id] = Target(url, headers)
         // Keep the original file name/extension: players use it to guess the format.
         val name = runCatching { URI(url).path.substringAfterLast('/') }.getOrNull().orEmpty()
             .ifBlank { "stream" }.let { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
-        return "http://127.0.0.1:${s.address.port}/s/$id/$name"
+        return "/s/$id/$name"
     }
 
     /** Stable ids, so rewriting the same live playlist again doesn't grow the table. */
@@ -58,7 +66,8 @@ object StreamProxy {
         return digest.take(12).joinToString("") { "%02x".format(it) }
     }
 
-    private fun handle(exchange: HttpExchange) {
+    /** Serves "/s/<id>/…". With [local] false, rewritten playlists point at paths on the same server. */
+    fun handle(exchange: HttpExchange, local: Boolean = true) {
         exchange.use {
             val id = exchange.requestURI.path.removePrefix("/s/").substringBefore('/')
             val target = targets[id] ?: return exchange.sendResponseHeaders(404, -1)
@@ -74,7 +83,7 @@ object StreamProxy {
                     if (exchange.requestMethod != "HEAD" && isPlaylist(target.url, type)) {
                         val text = body.string()
                         if (text.trimStart().startsWith("#EXTM3U")) {
-                            val bytes = rewrite(text, response.request.url.toString(), target.headers).toByteArray()
+                            val bytes = rewrite(text, response.request.url.toString(), target.headers, local).toByteArray()
                             exchange.responseHeaders.add("Content-Type", "application/vnd.apple.mpegurl")
                             exchange.sendResponseHeaders(response.code, bytes.size.toLong())
                             exchange.responseBody.write(bytes)
@@ -118,9 +127,10 @@ object StreamProxy {
     private val uriAttribute = Regex("URI=\"([^\"]+)\"")
 
     /** Points every URI in an HLS playlist (segments, variants, keys, maps) back at the proxy. */
-    fun rewrite(playlist: String, baseUrl: String, headers: Map<String, String>): String {
+    fun rewrite(playlist: String, baseUrl: String, headers: Map<String, String>, local: Boolean = true): String {
         val base = URI(baseUrl)
-        fun proxied(ref: String) = wrap(base.resolve(ref.trim().replace(" ", "%20")).toString(), headers)
+        fun proxied(ref: String) = base.resolve(ref.trim().replace(" ", "%20")).toString()
+            .let { if (local) wrap(it, headers) else register(it, headers) }
         return playlist.lineSequence().joinToString("\n") { line ->
             when {
                 line.isBlank() -> line
