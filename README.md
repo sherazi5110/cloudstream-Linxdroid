@@ -5,13 +5,18 @@ official Android app uses, with no changes to the extensions.
 
 **[Download](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** · **[How to install (.deb, Flatpak, .apk)](INSTALL.md)**
 
-| Linux | Android |
-|---|---|
-| `.deb` for Ubuntu, Debian, Mint, ChromeOS · `.flatpak` for any distro · `.tar` with your own Java | `.apk` for phones, tablets, Android TV and Fire TV (in testing) |
+| Linux | Android | iPhone |
+|---|---|---|
+| `.deb` for Ubuntu, Debian, Mint, ChromeOS · `.flatpak` for any distro · `.tar` with your own Java | `.apk` for phones, tablets, Android TV and Fire TV (in testing) | web app from your own free server ([guide](docs/WEB-APP.md)) |
 
 > **Android app (in testing):** a new app for **phones (touch)** and **Android TV (remote)** with this app's look,
 > profiles, Live TV, Stremio add-ons, TMDB and the VLC player. [More below](#android-app-in-testing).
 
+- **New in 7.1: CloudStream on iPhone.** Run the server mode on a free Oracle Cloud server and open your own private,
+  password-protected address in Safari, anywhere, also over mobile data. It installs with one command and free HTTPS.
+  See **[docs/WEB-APP.md](docs/WEB-APP.md)**.
+
+  ![The iPhone web app: Home, title page, player, Live TV](docs/screenshots/web-app.png)
 - **New in 7.0 (Linux and Android):**
   - **Downloads** for watching offline: *Download* on a movie, a download button on each episode (or *Download these* for a
     whole season). Direct files and HLS streams (joined into one file, AES-128 decrypted), with subtitles saved next to

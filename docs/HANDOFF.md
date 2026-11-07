@@ -2,6 +2,22 @@
 
 Read this first when continuing work on CloudStream for Linux.
 
+## Web app (7.1.0, 2026-11-07)
+
+- `cloudstream-linux serve [--host] [--port]` (`WebServer.kt`): JDK HttpServer, headless (no JavaFX toolkit). JSON API
+  under `/api/` (login, me, profile, providers, home, search per provider, load, links, progress, library, bookmark,
+  watched, live, live/play), `/img` (posters with headers, no mixed content), `/sub` (SRT → WebVTT, falls back to
+  the video's headers), `/s/` = `StreamProxy.handle(local = false)`: `StreamProxy.register` gives paths on the same
+  server, and HLS playlists are rewritten to those paths. Everything but the static files needs the `cs_session`
+  cookie (random token in prefs `web_sessions`); password PBKDF2 in prefs `web_server`; wrong passwords slow down.
+  Links that are https and need no headers play direct; the rest go through the proxy. Profiles are server-wide.
+- Front end: `resources/web/` (index.html, app.css, app.js; vanilla JS, hash routes, no build step), PWA manifest
+  and icons. Tested with Playwright in an iPhone 13 viewport against the mock server (scripts in the session only).
+- `backup` / `restore` CLI commands; `scripts/install-server.sh` (Ubuntu: Java 21, the release `.tar` in /opt,
+  user `cloudstream`, data /var/lib/cloudstream, systemd `cloudstream`, Caddy HTTPS, DuckDNS cron, iptables 80/443,
+  `cloudstream-admin` wrapper). Guide: `docs/WEB-APP.md`. The installer was syntax-checked and the server run from
+  the release tar here, but not run on a real Oracle machine.
+
 ## State (2026-10-31)
 
 - Branch **`v7`** (from main after the Android app was merged, PR #10), version **7.0.0** for Linux and Android
