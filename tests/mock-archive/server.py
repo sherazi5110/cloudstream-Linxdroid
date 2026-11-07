@@ -203,6 +203,7 @@ class Handler(BaseHTTPRequestHandler):
                 {"name": "Test Add-on 720p", "title": "HLS", "url": f"{root}/hls/master.m3u8",
                  "behaviorHints": {"proxyHeaders": {"request": {"X-CS-Token": "demo"}}}},
                 {"name": "Torrent", "title": "1080p torrent", "infoHash": "0123456789abcdef0123456789abcdef01234567"},
+                {"name": "Open host", "title": "MP4 without headers", "url": f"{root}/open/test_film_640.mp4"},
             ]}))
         if len(parts) == 3 and parts[0] == "subtitles":
             return self.send(200, json.dumps({"subtitles": [{"id": "s1", "lang": "eng", "url": f"{root}/stremio/subs/file/eng.srt"}]}))
@@ -213,6 +214,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        # Like real Stremio add-ons: browsers (the GitHub Pages web app) may read them.
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(data)
@@ -237,6 +240,12 @@ class Handler(BaseHTTPRequestHandler):
             if not os.path.exists(poster):
                 poster = os.path.join(MEDIA, "poster.png")
             return self.send(200, open(poster, "rb").read(), "image/jpeg")
+        if len(parts) == 2 and parts[0] == "open":
+            # A video any browser can play directly (no Referer or token needed).
+            path = os.path.join(MEDIA, os.path.basename(parts[1]))
+            if not os.path.exists(path):
+                return self.send(404, "not found", "text/plain")
+            return self.send(200, open(path, "rb").read(), "video/mp4")
         if len(parts) == 2 and parts[0] == "media":
             path = os.path.join(MEDIA, os.path.basename(parts[1]))
             if os.path.exists(path):

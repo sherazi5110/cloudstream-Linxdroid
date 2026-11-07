@@ -3,7 +3,7 @@
 Run **CloudStream extensions and Stremio add-ons on Linux, Android phones and Android TV**, from the same repositories the
 official Android app uses, with no changes to the extensions.
 
-**[Download](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** · **[How to install (.deb, Flatpak, .apk)](INSTALL.md)**
+**[Open the web version](https://sherazi5110.github.io/cloudstream-Linxdroid/)** (any phone or browser, Stremio add-ons) · **[Download](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** · **[How to install (.deb, Flatpak, .apk)](INSTALL.md)**
 
 | Linux | Android |
 |---|---|

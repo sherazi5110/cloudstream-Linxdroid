@@ -83,11 +83,11 @@ class StremioProfilesTest {
         assertEquals(6, series.episodes.size)
         assertEquals(listOf(1, 1, 1, 2, 2, 2), series.episodes.map { it.season })
 
-        // Streams: two HTTP streams with their headers; the torrent-only one is skipped. Plus subtitles.
+        // Streams: three HTTP streams (two with headers); the torrent-only one is skipped. Plus subtitles.
         val links = mutableListOf<ExtractorLink>()
         val subs = mutableListOf<SubtitleFile>()
         assertTrue(api.loadLinks(Engine.playables(film).single().data, false, { subs += it }, { links += it }))
-        assertEquals(2, links.size)
+        assertEquals(3, links.size)
         assertEquals("$base/", links.first { it.url.endsWith(".mp4") }.headers["Referer"])
         assertEquals("demo", links.first { it.url.endsWith(".m3u8") }.headers["X-CS-Token"])
         assertEquals(listOf("English"), subs.map { it.lang })
