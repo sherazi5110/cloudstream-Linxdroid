@@ -79,15 +79,10 @@ object Downloads {
 
     // ---------- where files go ----------
 
-    /** ~/Downloads/CloudStream (the XDG download folder; the Flatpak may write there), or the chosen folder. */
+    /** <Downloads>/CloudStream (the XDG download folder on Linux; the Flatpak may write there), or the chosen folder. */
     fun folder(): File {
         Settings.downloadFolder.takeIf { it.isNotBlank() }?.let { return File(it) }
-        val xdg = runCatching {
-            File(System.getProperty("user.home"), ".config/user-dirs.dirs").readLines()
-                .firstOrNull { it.startsWith("XDG_DOWNLOAD_DIR=") }?.substringAfter('=')?.trim('"')
-                ?.replace("\$HOME", System.getProperty("user.home"))
-        }.getOrNull()
-        return File(xdg ?: "${System.getProperty("user.home")}/Downloads", "CloudStream")
+        return File(Os.downloadsDir(), "CloudStream")
     }
 
     // ---------- the list ----------

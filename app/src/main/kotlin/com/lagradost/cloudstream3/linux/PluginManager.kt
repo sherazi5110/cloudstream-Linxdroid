@@ -167,8 +167,9 @@ object PluginManager {
         require(source.extension in setOf("cs3", "jar")) { "Expected a .cs3 or .jar file" }
         val target = File(RepositoryManager.extensionsDir, "local/${source.name}")
         target.parentFile.mkdirs()
-        source.copyTo(target, overwrite = true)
+        // Unload first: Windows can't overwrite a file a class loader still has open.
         unloadPlugin(target.absolutePath)
+        source.copyTo(target, overwrite = true)
         val data = PluginData(source.nameWithoutExtension, null, false, target.absolutePath, 0, null, source.nameWithoutExtension)
         record(data)
         loadPlugin(target, data).getOrThrow()

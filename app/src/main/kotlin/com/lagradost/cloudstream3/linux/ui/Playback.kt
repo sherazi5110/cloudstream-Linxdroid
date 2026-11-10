@@ -39,7 +39,7 @@ object Playback {
         Nav.window.closeOverlay()
         if (Vlc.factory == null) {
             sources.cancel()
-            Toasts.show("Playing needs VLC's libraries: sudo apt install libvlc5 vlc-plugin-base", seconds = 12.0)
+            Toasts.show("Playing needs VLC's libraries: " + com.lagradost.cloudstream3.linux.Os.vlcHint, seconds = 12.0)
             return
         }
         active = BuiltinPlayer(api, response, playable, sources, link).also { it.start() }
@@ -152,7 +152,7 @@ class LoadingScreen(
     private fun errorText(): String {
         val t = sources.error ?: return "No sources found. The site may be down or blocked — try Settings → Network."
         return if (t is NotImplementedError || t.toString().contains("WebView")) {
-            "This extension needs an Android WebView (e.g. Cloudflare), which Linux doesn't support yet."
+            "This extension needs an Android WebView (e.g. Cloudflare), which ${com.lagradost.cloudstream3.linux.Os.name} doesn't support yet."
         } else "No sources: ${t.message ?: t}"
     }
 

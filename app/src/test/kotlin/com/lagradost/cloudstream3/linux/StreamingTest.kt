@@ -24,7 +24,7 @@ class StreamingTest {
     @BeforeTest
     fun start() {
         port = ServerSocket(0).use { it.localPort }
-        server = ProcessBuilder("python3", "-I", tests.resolve("mock-archive/server.py").path, port.toString())
+        server = ProcessBuilder(System.getProperty("test.python", "python3"), "-I", tests.resolve("mock-archive/server.py").path, port.toString())
             .redirectErrorStream(true).start()
         repeat(50) {
             if (runCatching { URI("http://127.0.0.1:$port/advancedsearch.php").toURL().readText() }.isSuccess) return@repeat

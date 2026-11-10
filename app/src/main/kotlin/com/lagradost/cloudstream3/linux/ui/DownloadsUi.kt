@@ -137,7 +137,7 @@ object DownloadsUi {
 
     fun openFolder() {
         val dir = Downloads.folder().apply { mkdirs() }
-        runCatching { ProcessBuilder("xdg-open", dir.absolutePath).start() }
+        com.lagradost.cloudstream3.linux.Os.open(dir.absolutePath)
     }
 
     /** The Library's Downloads tab: one row per movie or episode, grouped by title. */

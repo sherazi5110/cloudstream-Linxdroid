@@ -70,6 +70,14 @@ object Vlc {
                 val current = System.getProperty("jna.library.path")
                 System.setProperty("jna.library.path", (listOfNotNull(current) + dirs).joinToString(java.io.File.pathSeparator))
             }
+            // VLC shipped inside the app (the Windows version): load libvlccore by its full path first, so
+            // libvlc.dll finds it; libvlc then finds its plugins\ folder next to itself.
+            com.lagradost.cloudstream3.linux.Os.bundledVlcDir()?.let { dir ->
+                val core = java.io.File(dir, if (com.lagradost.cloudstream3.linux.Os.isWindows) "libvlccore.dll" else "libvlccore.so.9")
+                if (core.isFile) runCatching { com.sun.jna.NativeLibrary.getInstance(core.absolutePath) }
+                val current = System.getProperty("jna.library.path")
+                System.setProperty("jna.library.path", (listOf(dir.absolutePath) + listOfNotNull(current)).joinToString(java.io.File.pathSeparator))
+            }
             if (!NativeDiscovery().discover()) return@runCatching null
             val args = buildList {
                 add("--quiet")

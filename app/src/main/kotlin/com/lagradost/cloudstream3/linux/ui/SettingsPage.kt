@@ -177,7 +177,7 @@ class SettingsPage : StackPane(), Refreshable {
 
     private fun openFolder(file: File) {
         file.mkdirs()
-        runCatching { ProcessBuilder("xdg-open", file.absolutePath).start() }
+        com.lagradost.cloudstream3.linux.Os.open(file.absolutePath)
     }
 
     // ---------- categories ----------
@@ -354,7 +354,7 @@ class SettingsPage : StackPane(), Refreshable {
         val qualities = listOf(0, 2160, 1440, 1080, 720, 480)
         return listOf(
             section("Player",
-                row("Player engine", if (!vlcEngine) "VLC's libraries aren't installed, so videos can't play. Run: sudo apt install libvlc5 vlc-plugin-base" else
+                row("Player engine", if (!vlcEngine) "VLC's libraries aren't available, so videos can't play. " + com.lagradost.cloudstream3.linux.Os.vlcHint else
                     "Videos play inside this window using VLC ${Vlc.version.orEmpty()}: every format VLC plays, hardware decoding, source switching, online subtitles, audio languages, speed and zoom.",
                     label(if (vlcEngine) "Ready" else "Not installed", if (vlcEngine) "good-text" else "error-text")),
                 row("Battery saver", "For low-end PCs and laptops on battery: skips the H.264 deblocking filter (much less CPU), buffers longer and does no extra processing. Hardware decoding stays on.",
@@ -469,7 +469,7 @@ class SettingsPage : StackPane(), Refreshable {
                 listOf("Movie", "TvSeries", "Anime", "AsianDrama", "Cartoon", "Documentary", "Live"),
                 { mediaLabels[it] ?: it },
                 { Settings.mediaTypes }) { Settings.mediaTypes = it }),
-            row("Translated extensions", "Android extensions are converted for Linux once and cached. Clearing forces a fresh conversion on next start.",
+            row("Translated extensions", "Android extensions are converted for ${com.lagradost.cloudstream3.linux.Os.name} once and cached. Clearing forces a fresh conversion on next start.",
                 button("Clear", Icons.DELETE, "btn-ghost", "btn-small") {
                     StorageInfo.clear(File(com.lagradost.cloudstream3.linux.Platform.context.getCacheDir(), "translated"))
                     Toasts.show("Cleared — restart to re-translate")
@@ -627,7 +627,7 @@ class SettingsPage : StackPane(), Refreshable {
                 tests,
             ),
             section("Compatibility",
-                row("Linux compatibility check", "Looks for Android APIs an extension uses that don't exist on Linux, without running it.", compatButton),
+                row("${com.lagradost.cloudstream3.linux.Os.name} compatibility check", "Looks for Android APIs an extension uses that don't exist on ${com.lagradost.cloudstream3.linux.Os.name}, without running it.", compatButton),
                 compat,
             ),
             section("Logs",
@@ -912,7 +912,7 @@ class SettingsPage : StackPane(), Refreshable {
     }
 
     private fun about(): List<Node> = listOf(
-        section("CloudStream for Linux",
+        section(AppInfo.NAME,
             row("Version ${AppInfo.VERSION}", "Runs CloudStream extensions from the same repositories as the Android app. Free software under GPL-3.0.",
                 label("v${AppInfo.VERSION}", "tag", "accent")),
             row("Made by", AppInfo.CREDIT, label("", "muted")),

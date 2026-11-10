@@ -6,13 +6,10 @@ import com.lagradost.cloudstream3.CloudStreamApp
 import com.lagradost.cloudstream3.CommonActivity
 import java.io.File
 
-/** Where things live on disk, following the XDG base directory spec. */
+/** Where things live on disk: XDG folders on Linux, %APPDATA%\CloudStream on Windows (see [Os]). */
 object AppDirs {
-    val data: File = File(
-        System.getProperty("cloudstream.home")
-            ?: System.getenv("CLOUDSTREAM_HOME")
-            ?: ((System.getenv("XDG_DATA_HOME") ?: "${System.getProperty("user.home")}/.local/share") + "/cloudstream-linux")
-    )
+    val data: File = (System.getProperty("cloudstream.home") ?: System.getenv("CLOUDSTREAM_HOME"))?.let(::File)
+        ?: Os.defaultDataDir()
 }
 
 /**
