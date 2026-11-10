@@ -90,7 +90,12 @@ jobs:
           app=app/build/jpackage-win/CloudStream
           out=$("$app/runtime/bin/java.exe" -cp "$app/app/*" com.lagradost.cloudstream3.linux.MainKt doctor 2>&1 || true)
           echo "$out"
-          echo "$out" | grep -q "libVLC    3\." || { echo "::error::The packaged app didn't find its bundled VLC"; exit 1; }
+          ls "$app/app/vlc" | head
+          if ! echo "$out" | grep -q "libVLC    3\."; then
+            echo "$out" | tail -25 | while IFS= read -r line; do echo "::warning title=doctor::${line:0:300}"; done
+            echo "::warning title=app folder::$(ls "$app/app" | tr '\n' ' ' | cut -c1-600)"
+            echo "::error::The packaged app didn't find its bundled VLC"; exit 1
+          fi
 
       - name: Screenshots of the app window
         # Starts CloudStream.exe in screenshot mode (the same tour as on Linux); the pictures are in the artifact.
