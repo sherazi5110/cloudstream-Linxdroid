@@ -137,6 +137,8 @@ val packageWindows by tasks.registering(Exec::class) {
         if (type == "app-image") {
             addAll(listOf("--input", input.get().asFile.path, "--main-jar", "app.jar", "--main-class", application.mainClass.get()))
             addAll(listOf("--icon", rootProject.file("packaging/windows/cloudstream.ico").path))
+            // A second launcher with a console window for the command line (cloudstream-cli.exe doctor, install…).
+            addAll(listOf("--add-launcher", "cloudstream-cli=" + rootProject.file("packaging/windows/cli-launcher.properties").path))
             addAll(listOf("--jlink-options", "--strip-debug --no-man-pages --no-header-files --strip-native-commands"))
             addAll(listOf("--add-modules", listOf(
                 "java.base", "java.desktop", "java.logging", "java.management", "java.naming", "java.net.http",

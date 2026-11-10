@@ -88,7 +88,7 @@ jobs:
         # The packaged app's own checker must find its Java, extensions folder and the bundled VLC.
         run: |
           app=app/build/jpackage-win/CloudStream
-          out=$("$app/runtime/bin/java.exe" -cp "$app/app/*" com.lagradost.cloudstream3.linux.MainKt doctor 2>&1 || true)
+          out=$(CLOUDSTREAM_HOME="$(cygpath -w "$PWD/doctor-home")" "$app/cloudstream-cli.exe" doctor 2>&1 || true)
           echo "$out"
           ls "$app/app/vlc" | head
           if ! echo "$out" | grep -q "libVLC    3\."; then
