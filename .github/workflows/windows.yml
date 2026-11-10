@@ -104,7 +104,20 @@ jobs:
           export CS_SCREENSHOT="$(cygpath -w "$PWD/shots")\\win" CS_SCREENSHOT_ONLY=settings7 CLOUDSTREAM_HOME="$(cygpath -w "$PWD/shot-home")"
           timeout 180 app/build/jpackage-win/CloudStream/CloudStream.exe || true
           ls shots
-          [ -n "$(ls shots)" ] || echo "::warning::No screenshots were taken"
+          [ -n "$(ls shots)" ] || { echo "::error::No screenshots were taken"; exit 1; }
+          # A drawn window has many colours and the app's dark background; a blank one doesn't.
+          pip install -q pillow
+          python - <<'PY'
+          import glob
+          from PIL import Image
+          for f in sorted(glob.glob("shots/*.png")):
+              im = Image.open(f).convert("RGB")
+              small = im.resize((200, int(200 * im.height / im.width)))
+              colours = len(set(small.getdata()))
+              mean = [sum(c) / (small.width * small.height) for c in zip(*small.getdata())]
+              print(f"::notice title=screenshot::{f.split('/')[-1]} {im.width}x{im.height}, {colours} colours, mean RGB {[round(x) for x in mean]}")
+              if colours < 50: print(f"::error::{f} looks blank")
+          PY
 
       - uses: actions/upload-artifact@v4
         with:
