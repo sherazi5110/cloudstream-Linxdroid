@@ -40,7 +40,7 @@ import kotlin.system.exitProcess
 
 object AppInfo {
     val NAME = "CloudStream for " + com.lagradost.cloudstream3.linux.Os.name
-    const val VERSION = "7.0.2"
+    const val VERSION = "7.1.0"
     const val CREDIT = "Tennant Creek"
 }
 

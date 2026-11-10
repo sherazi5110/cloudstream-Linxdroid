@@ -2,12 +2,27 @@
 
 | Your device | Download |
 |---|---|
+| **Windows 10 or 11** | `cloudstream-windows-{{VERSION}}.msi` (installer) or `cloudstream-windows-{{VERSION}}-portable.zip` |
 | **Ubuntu, Debian, Mint, Pop!_OS, Zorin, ChromeOS (Linux)** | `cloudstream-linux_{{VERSION}}_amd64.deb` |
 | **Any Linux with Flatpak** (Fedora, Arch, openSUSE, Steam Deck…) | `cloudstream-linux.flatpak` |
 | **Linux with Java 21 already installed** | `cloudstream-linux-{{TAG}}.tar` |
 | **Android phone or tablet** | `cloudstream-android-arm64-v8a.apk` |
 | **Android TV, Google TV, Fire TV Stick, TV box** | `cloudstream-android-armeabi-v7a.apk` |
 | **Android, not sure which** | `cloudstream-android-universal.apk` (larger, runs on any device) |
+
+<details>
+<summary><b>Install on Windows</b> (.msi or portable .zip; includes VLC)</summary>
+
+1. Download `cloudstream-windows-{{VERSION}}.msi` and open it. It installs for your user only (no admin password) and
+   adds CloudStream to the Start menu and the desktop.
+2. Windows may say **"Windows protected your PC"** because the installer isn't signed yet: click **More info → Run anyway**.
+3. Open **CloudStream** and add your repositories under Extensions.
+
+**Portable instead:** unzip `cloudstream-windows-{{VERSION}}-portable.zip` anywhere and run `CloudStream\CloudStream.exe`.
+
+To update, install the new `.msi` the same way (extensions, profiles and library are kept in `%APPDATA%\CloudStream`).
+To remove: Settings → Apps → CloudStream → Uninstall.
+</details>
 
 <details>
 <summary><b>Install the .deb</b> (Ubuntu, Debian, Mint, ChromeOS)</summary>
