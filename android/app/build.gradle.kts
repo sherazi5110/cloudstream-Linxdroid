@@ -15,11 +15,11 @@ android {
         targetSdk = 36
         // CI passes the release tag (-PappVersion=7.0.0); local builds use the numbers below.
         val tagVersion = (findProperty("appVersion") as String?)?.removePrefix("v")?.removePrefix("V")
-        versionName = tagVersion ?: "7.0.1"
+        versionName = tagVersion ?: "7.0.2"
         versionCode = tagVersion?.let { v ->
             val (major, minor, patch) = (v.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 } + listOf(0, 0, 0)).take(3)
             major * 10000 + minor * 100 + patch
-        } ?: 70001
+        } ?: 70002
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -95,6 +95,26 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.core:core-ktx:1.18.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+
+    // Libraries the official app ships, which extensions are compiled against and expect to find at runtime
+    // (same versions as upstream's version catalog). Without them, e.g. "Failed resolution of
+    // Landroidx/appcompat/app/AppCompatActivity" when installing an extension.
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
+    implementation("androidx.preference:preference-ktx:1.2.1")
+    implementation("com.google.android.material:material:1.14.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.9.8")
+    implementation("androidx.navigation:navigation-ui-ktx:2.9.8")
+    implementation("androidx.palette:palette-ktx:1.0.0")
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
+    implementation("com.github.albfernandez:juniversalchardet:2.5.0")
+    implementation("com.google.code.gson:gson:2.11.0")
+    implementation("me.xdrop:fuzzywuzzy:1.4.0")
+    implementation("org.conscrypt:conscrypt-android") { version { strictly("2.5.2") } }
+    implementation("app.cash.zipline:zipline-android:1.27.0")
 
     // Posters and backdrops (OkHttp, so the app's DNS/cookie settings apply; WebP is native on Android).
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
