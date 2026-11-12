@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stream Goat</title>
+<meta name="description" content="Stream Goat: movies, series, anime and Live TV on Windows, Linux, Android and Android TV. Runs CloudStream extensions and Stremio add-ons. Created by Syed Ali Hamza.">
+<meta property="og:title" content="Stream Goat">
+<meta property="og:description" content="Movies, series, anime and Live TV on Windows, Linux, Android and Android TV. Free and open source.">
+<meta property="og:image" content="screenshots/intro.png">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="app/apple-touch-icon.png">
+<script>
+  // The web version used to live here: send its old links (…/#/home and so on) to its new place.
+  if (location.hash.startsWith("#/")) location.replace("app/" + location.hash);
+</script>
+<style>
+  :root {
+    --bg: #07080d; --bg2: #0e1018; --card: #141724; --line: #232838;
+    --text: #eef1f8; --muted: #9aa3b8; --accent: #4f8dff; --accent2: #8fb6ff;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent2); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+  header.top { position: sticky; top: 0; z-index: 10; background: rgba(7, 8, 13, .82);
+    backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  header.top .wrap { display: flex; align-items: center; gap: 12px; height: 60px; }
+  header.top img { width: 34px; height: 34px; }
+  header.top b { font-size: 18px; letter-spacing: .2px; }
+  header.top nav { margin-left: auto; display: flex; gap: 18px; }
+  header.top nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+  header.top nav a:hover { color: var(--text); }
+
+  .hero { position: relative; overflow: hidden; text-align: center; padding: 64px 0 40px;
+    background: radial-gradient(ellipse at 50% 0%, #17305f 0%, transparent 60%); }
+  .hero h1 { font-size: clamp(40px, 8vw, 72px); line-height: 1.05; margin: 0 0 12px; letter-spacing: -1px; }
+  .hero p.lead { font-size: clamp(17px, 2.4vw, 21px); color: var(--muted); max-width: 680px; margin: 0 auto 8px; }
+  .hero p.credit { color: var(--accent2); font-weight: 600; margin: 0 0 28px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border-radius: 999px;
+    font-weight: 600; text-decoration: none; border: 1px solid var(--line); color: var(--text); background: var(--card); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn:hover { filter: brightness(1.12); }
+  .hero .shot { margin: 40px auto 0; max-width: 980px; border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); }
+  .hero .shot img { display: block; width: 100%; height: auto; }
+
+  section { padding: 56px 0; }
+  section h2 { font-size: clamp(28px, 4vw, 38px); margin: 0 0 8px; text-align: center; }
+  section p.sub { color: var(--muted); text-align: center; margin: 0 auto 32px; max-width: 640px; }
+
+  .platforms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .platform { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+  .platform.mine { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .platform h3 { margin: 0 0 4px; font-size: 21px; display: flex; align-items: center; gap: 8px; }
+  .platform .tag { font-size: 12px; font-weight: 600; color: #fff; background: var(--accent); padding: 2px 8px;
+    border-radius: 999px; display: none; }
+  .platform.mine .tag { display: inline-block; }
+  .platform p { color: var(--muted); margin: 0 0 14px; font-size: 15px; }
+  .platform a.dl { display: block; padding: 11px 14px; margin-bottom: 8px; border-radius: 10px; text-decoration: none;
+    color: var(--text); background: var(--bg2); border: 1px solid var(--line); font-weight: 600; font-size: 15px; }
+  .platform a.dl small { display: block; color: var(--muted); font-weight: 400; font-size: 13px; }
+  .platform a.dl:hover { border-color: var(--accent); }
+  .note { color: var(--muted); font-size: 14px; text-align: center; margin-top: 18px; }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .feature { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .feature .icon { font-size: 26px; }
+  .feature h3 { margin: 6px 0 6px; font-size: 18px; }
+  .feature p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .gallery figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .gallery img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+  .gallery figcaption { padding: 10px 14px; color: var(--muted); font-size: 14px; }
+
+  .web { background: linear-gradient(135deg, #12204a, #0e1018); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 32px; text-align: center; }
+  .web h2 { margin-top: 0; }
+
+  footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--muted); font-size: 14px; text-align: center; }
+  footer img { width: 40px; height: 40px; }
+  footer b { color: var(--text); }
+
+  dialog { padding: 0; border: none; background: transparent; max-width: 96vw; }
+  dialog::backdrop { background: rgba(0, 0, 0, .85); }
+  dialog img { max-width: 96vw; max-height: 90vh; border-radius: 10px; display: block; }
+
+  @media (max-width: 640px) {
+    header.top nav { display: none; }
+    .hero { padding-top: 40px; }
+    section { padding: 40px 0; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <img src="logo.svg" alt="">
+    <b>Stream Goat</b>
+    <nav>
+      <a href="#download">Download</a>
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="app/">Web version</a>
+      <a href="https://github.com/sherazi5110/stream-goat">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>Stream Goat</h1>
+    <p class="lead">Movies, series, anime and Live TV on <b>Windows</b>, <b>Linux</b>, <b>Android</b> and <b>Android TV</b>.
+      Runs CloudStream extensions and Stremio add-ons. Free and open source.</p>
+    <p class="credit">Created by Syed Ali Hamza</p>
+    <div class="buttons">
+      <a class="btn primary" id="hero-download" href="#download">Download</a>
+      <a class="btn" href="app/">Open in your browser</a>
+    </div>
+    <div class="shot"><img src="screenshots/home.png" alt="Stream Goat's home screen" width="1600" height="1000"></div>
+  </div>
+</div>
+
+<section id="download">
+  <div class="wrap">
+    <h2>Download</h2>
+    <p class="sub">Pick your device. Every file is also on the <a href="https://github.com/sherazi5110/stream-goat/releases/latest">latest release</a> page.</p>
+    <div class="platforms">
+      <div class="platform" data-os="windows">
+        <h3>Windows <span class="tag">Your device</span></h3>
+        <p>Windows 10 and 11. Java and VLC are included, so there's nothing else to install.</p>
+        <a class="dl" href="https://github.com/sherazi5110/stream-goat/releases/latest">Installer (.msi)<small>streamgoat-windows-…msi · installs for your user, no admin needed</small></a>
+        <a class="dl" href="https://github.com/sherazi5110/stream-goat/releases/latest">Portable (.zip)<small>Unzip anywhere and run Stream Goat.exe</small></a>
+        <p style="margin:10px 0 0;font-size:13px">If Windows says "Windows protected your PC", click <b>More info → Run anyway</b> (the installer isn't signed yet).</p>
+      </div>
+      <div class="platform" data-os="android">
+        <h3>Android &amp; Android TV <span class="tag">Your device</span></h3>
+        <p>Phones and tablets (touch) and TVs (remote), with the VLC player and real HDR on HDR screens.</p>
+        <a class="dl" href="https://github.com/sherazi5110/stream-goat/releases/latest/download/streamgoat-android-arm64-v8a.apk">Phones and tablets<small>streamgoat-android-arm64-v8a.apk</small></a>
+        <a class="dl" href="https://github.com/sherazi5110/stream-goat/releases/latest/download/streamgoat-android-armeabi-v7a.apk">Android TV, Fire TV, TV boxes<small>streamgoat-android-armeabi-v7a.apk</small></a>
+        <a class="dl" href="https://github.com/sherazi5110/stream-goat/releases/latest/download/streamgoat-android-universal.apk">Not sure? Universal<small>Runs on any device (bigger download)</small></a>
+      </div>
+      <div class="platform" data-os="linux">
+        <h3>Linux <span class="tag">Your device</span></h3>
+        <p>Ubuntu, Debian, Mint, Fedora, Arch, Steam Deck, ChromeOS and more.</p>
+        <a class="dl" href="https://github.com/sherazi5110/stream-goat/releases/latest">Ubuntu, Debian, Mint, ChromeOS (.deb)<small>sudo apt install ./streamgoat-linux_…_amd64.deb</small></a>
+        <a class="dl" href="https://github.com/sherazi5110/stream-goat/releases/latest/download/streamgoat-linux.flatpak">Any distro (Flatpak)<small>flatpak install --user streamgoat-linux.flatpak</small></a>
+      </div>
+    </div>
+    <p class="note">Step-by-step help for every device: <a href="https://github.com/sherazi5110/stream-goat/blob/main/INSTALL.md">install guide</a>.
+      iPhone and iPad: use the <a href="app/">web version</a> and add it to your home screen.</p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Everything in one app</h2>
+    <p class="sub">The same app and the same look on every device.</p>
+    <div class="features">
+      <div class="feature"><div class="icon">🧩</div><h3>Extensions and add-ons</h3><p>Add CloudStream repositories and Stremio add-ons by link, exactly as in the official apps.</p></div>
+      <div class="feature"><div class="icon">🔎</div><h3>Search suggestions</h3><p>Titles drop down as you type; arrow keys and Enter pick one.</p></div>
+      <div class="feature"><div class="icon">🌍</div><h3>Translate subtitles</h3><p>Into 24 languages, including Hindi, Urdu, Chinese, Arabic, Spanish and French, keeping every line's timing.</p></div>
+      <div class="feature"><div class="icon">✨</div><h3>Anime enhance</h3><p>Low-resolution animation is upscaled with Lanczos, so line art stays crisp instead of soft.</p></div>
+      <div class="feature"><div class="icon">🌈</div><h3>HDR</h3><p>Real HDR10, HLG and Dolby Vision on HDR Android screens; colour correction for HDR on desktop.</p></div>
+      <div class="feature"><div class="icon">📺</div><h3>Live TV</h3><p>M3U playlists with a TV guide, Xtream Codes logins and Stremio TV add-ons.</p></div>
+      <div class="feature"><div class="icon">⬇️</div><h3>Downloads</h3><p>Save films and episodes for offline viewing, with their subtitles.</p></div>
+      <div class="feature"><div class="icon">⏭️</div><h3>Skip intro</h3><p>Skip intros, recaps and credits in anime, and a countdown to the next episode.</p></div>
+      <div class="feature"><div class="icon">👨‍👩‍👧</div><h3>Profiles and kids mode</h3><p>Everyone gets their own history and list; kids profiles with a parent PIN.</p></div>
+      <div class="feature"><div class="icon">⭐</div><h3>Ratings and artwork</h3><p>TMDB, IMDb and AniList ratings, cast, trailers and backdrops.</p></div>
+      <div class="feature"><div class="icon">▶️</div><h3>VLC player built in</h3><p>Plays almost any format, with source switching, online subtitles, audio languages and zoom.</p></div>
+      <div class="feature"><div class="icon">🎨</div><h3>Your look</h3><p>Liquid glass, dark, AMOLED and light themes, any accent colour, and your own wallpaper.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="screenshots">
+  <div class="wrap">
+    <h2>Screenshots</h2>
+    <p class="sub">From the Windows and Linux app. Tap a picture to see it bigger.</p>
+    <div class="gallery">
+      <figure><img src="screenshots/intro.png" alt="Startup intro" loading="lazy"><figcaption>The startup intro</figcaption></figure>
+      <figure><img src="screenshots/search-suggest.png" alt="Search suggestions" loading="lazy"><figcaption>Search suggestions</figcaption></figure>
+      <figure><img src="screenshots/player-translate.png" alt="Translate subtitles" loading="lazy"><figcaption>Translate subtitles</figcaption></figure>
+      <figure><img src="screenshots/player-picture.png" alt="Picture menu" loading="lazy"><figcaption>Anime enhance and HDR</figcaption></figure>
+      <figure><img src="screenshots/livetv-guide.png" alt="Live TV guide" loading="lazy"><figcaption>Live TV guide</figcaption></figure>
+      <figure><img src="screenshots/profiles.png" alt="Who's watching" loading="lazy"><figcaption>Profiles</figcaption></figure>
+      <figure><img src="screenshots/player-skip.png" alt="Skip intro" loading="lazy"><figcaption>Skip intro</figcaption></figure>
+      <figure><img src="screenshots/theme-glass.png" alt="Liquid glass theme" loading="lazy"><figcaption>Liquid glass theme</figcaption></figure>
+      <figure><img src="screenshots/about.png" alt="About Stream Goat" loading="lazy"><figcaption>Created by Syed Ali Hamza</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="web">
+      <h2>No install? Use it in your browser</h2>
+      <p class="sub" style="margin-bottom:20px">The web version runs on any phone or computer, including iPhone and iPad, with Stremio add-ons.</p>
+      <a class="btn primary" href="app/">Open the web version</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <img src="logo.svg" alt=""><br>
+    <b>Stream Goat</b>, created by <b>Syed Ali Hamza</b>.<br>
+    Free software under GPL-3.0 · <a href="https://github.com/sherazi5110/stream-goat">Source code on GitHub</a><br>
+    Stream Goat doesn't host any content: what you watch comes from the extensions and add-ons you choose to install.
+  </div>
+</footer>
+
+<dialog id="zoom"><img alt=""></dialog>
+<script>
+  // Highlight the visitor's own device and point the main button at it.
+  const ua = navigator.userAgent.toLowerCase();
+  const os = /android/.test(ua) ? "android" : /windows/.test(ua) ? "windows" : /linux|cros/.test(ua) ? "linux" : null;
+  if (os) {
+    const card = document.querySelector(`.platform[data-os="${os}"]`);
+    card.classList.add("mine");
+    card.parentNode.prepend(card);
+    document.getElementById("hero-download").textContent =
+      "Download for " + { android: "Android", windows: "Windows", linux: "Linux" }[os];
+  }
+  // Screenshots open bigger.
+  const zoom = document.getElementById("zoom");
+  document.querySelectorAll(".gallery img").forEach(img => img.addEventListener("click", () => {
+    zoom.querySelector("img").src = img.src; zoom.querySelector("img").alt = img.alt; zoom.showModal();
+  }));
+  zoom.addEventListener("click", () => zoom.close());
+</script>
+</body>
+</html>

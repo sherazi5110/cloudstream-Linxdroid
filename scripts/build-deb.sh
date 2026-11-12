@@ -31,7 +31,7 @@ Architecture: $ARCH
 Installed-Size: $(du -sk "$STAGE" | cut -f1)
 Depends: libgtk-3-0t64 | libgtk-3-0, libgl1, libx11-6, libxtst6, libvlc5, vlc-plugin-base
 Maintainer: Syed Ali Hamza <100144510+sherazi5110@users.noreply.github.com>
-Homepage: https://github.com/sherazi5110/cloudstream-Linxdroid
+Homepage: https://github.com/sherazi5110/stream-goat
 Description: Stream Goat: movies, series, anime and Live TV
  Stream Goat installs and runs CloudStream extensions from the same
  repositories the Android app uses, and plays streams in its built-in

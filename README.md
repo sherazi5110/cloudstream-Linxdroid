@@ -11,11 +11,11 @@ Stream Goat runs **CloudStream extensions and Stremio add-ons**, from the same r
 Android app uses, with no changes to the extensions. *(Formerly "CloudStream for Linux"; your extensions, profiles,
 library and downloads carry over.)*
 
-**[Download](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** · **[Open the web version](https://sherazi5110.github.io/cloudstream-Linxdroid/)** (any phone or browser, Stremio add-ons) · **[Full install guide](INSTALL.md)**
+**[Website](https://sherazi5110.github.io/stream-goat/)** · **[Download](https://github.com/sherazi5110/stream-goat/releases/latest)** · **[Open the web version](https://sherazi5110.github.io/stream-goat/app/)** (any phone or browser, Stremio add-ons) · **[Full install guide](INSTALL.md)**
 
 ## Download for your device
 
-Every file is on the **[latest release](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** page.
+Every file is on the **[latest release](https://github.com/sherazi5110/stream-goat/releases/latest)** page.
 
 ### Windows 10 and 11
 
@@ -146,7 +146,7 @@ See **[docs/ANALYSIS.md](docs/ANALYSIS.md)** for how the Android app works, and 
 
 The Android app is a new app (not a fork of the official one) with the same look, features and simplicity as the
 desktop app. It's in testing: releases from V7 include `.apk` files, and test builds can be downloaded from the latest
-[Build workflow run](https://github.com/sherazi5110/cloudstream-Linxdroid/actions/workflows/build.yml) (artifact
+[Build workflow run](https://github.com/sherazi5110/stream-goat/actions/workflows/build.yml) (artifact
 `streamgoat-android`). The pictures below are the approved design previews; on landscape tablets and TV the app uses
 the Linux app's icon rail, top bar, banner and title page.
 
