@@ -9,8 +9,13 @@ class FileSharedPreferences(private val file: File) : SharedPreferences {
     private val values: MutableMap<String, Any?> = load()
 
     private fun load(): MutableMap<String, Any?> {
-        if (!file.exists()) return LinkedHashMap()
-        val json = JSONObject(file.readText())
+        // Before 7.2.1 the Windows app couldn't replace this file (a rename onto an existing file fails there),
+        // so its newest settings were left in the .tmp file: take them when that's newer.
+        val tmp = File(file.path + ".tmp")
+        val source = if (tmp.isFile && tmp.length() > 0 && (!file.exists() || tmp.lastModified() >= file.lastModified()) &&
+            runCatching { JSONObject(tmp.readText()) }.isSuccess) tmp else file
+        if (!source.exists()) return LinkedHashMap()
+        val json = JSONObject(source.readText())
         return json.keySet().associateWithTo(LinkedHashMap()) { key ->
             when (val v = json.get(key)) {
                 is JSONArray -> v.map { it.toString() }.toSet()
@@ -25,7 +30,7 @@ class FileSharedPreferences(private val file: File) : SharedPreferences {
         file.parentFile.mkdirs()
         val tmp = File(file.path + ".tmp")
         tmp.writeText(JSONObject(values).toString(2))
-        tmp.renameTo(file)
+        java.nio.file.Files.move(tmp.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
 
     @Synchronized override fun getAll(): Map<String, *> = HashMap(values)

@@ -113,8 +113,9 @@ class PersistentCookieJar(private val file: File) : CookieJar {
 
     init {
         runCatching {
-            if (!file.exists()) return@runCatching
-            val array = JSONArray(file.readText())
+            val source = Os.freshest(file)
+            if (!source.exists()) return@runCatching
+            val array = JSONArray(source.readText())
             for (i in 0 until array.length()) {
                 val o = array.getJSONObject(i)
                 val cookie = Cookie.Builder().name(o.getString("name")).value(o.getString("value"))
@@ -164,6 +165,6 @@ class PersistentCookieJar(private val file: File) : CookieJar {
         file.parentFile.mkdirs()
         val tmp = File(file.path + ".tmp")
         tmp.writeText(array.toString())
-        tmp.renameTo(file)
+        java.nio.file.Files.move(tmp.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
 }
