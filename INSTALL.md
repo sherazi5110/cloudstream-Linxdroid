@@ -1,6 +1,6 @@
 # Install Stream Goat
 
-Everything is on the [Releases page](https://github.com/sherazi5110/cloudstream-Linxdroid/releases). Pick the file for
+Everything is on the [Releases page](https://github.com/sherazi5110/stream-goat/releases). Pick the file for
 your device:
 
 | Your device | File | Section |
@@ -29,7 +29,7 @@ The Windows app is the same app as on Linux (same look, profiles, extensions, St
 with its own Java and **VLC included**: nothing else to install. 64-bit Windows 10 or 11.
 
 **Installer (recommended)**
-1. From the [Releases page](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest), download
+1. From the [Releases page](https://github.com/sherazi5110/stream-goat/releases/latest), download
    `streamgoat-windows-<version>.msi` and open it.
 2. If Windows shows **"Windows protected your PC"** (the installer isn't code-signed yet), click **More info →
    Run anyway**.
@@ -55,7 +55,7 @@ with its own Java and **VLC included**: nothing else to install. 64-bit Windows 
 
 **Option A: in the terminal (recommended)**
 ```bash
-wget -O /tmp/cloudstream-linux.deb https://github.com/sherazi5110/cloudstream-Linxdroid/releases/download/V6.0.1/streamgoat-linux_7.2.0_amd64.deb
+wget -O /tmp/cloudstream-linux.deb https://github.com/sherazi5110/stream-goat/releases/download/V6.0.1/streamgoat-linux_7.2.0_amd64.deb
 sudo apt install /tmp/cloudstream-linux.deb
 ```
 
@@ -104,7 +104,7 @@ need to install VLC. Every release has it as `streamgoat-linux.flatpak`.
 # Once per computer, if Flathub isn't set up yet (it provides the runtime the app needs):
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-wget -O /tmp/streamgoat-linux.flatpak https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest/download/streamgoat-linux.flatpak
+wget -O /tmp/streamgoat-linux.flatpak https://github.com/sherazi5110/stream-goat/releases/latest/download/streamgoat-linux.flatpak
 flatpak install --user /tmp/streamgoat-linux.flatpak
 flatpak run io.github.sherazi5110.CloudStreamLinux
 ```
@@ -143,7 +143,7 @@ sudo zypper install vlc gtk3 libXtst6 Mesa-libGL1 binutils
 ### 2. Unpack the app
 ```bash
 cd /tmp
-wget -O cloudstream-linux.deb https://github.com/sherazi5110/cloudstream-Linxdroid/releases/download/V6.0.1/streamgoat-linux_7.2.0_amd64.deb
+wget -O cloudstream-linux.deb https://github.com/sherazi5110/stream-goat/releases/download/V6.0.1/streamgoat-linux_7.2.0_amd64.deb
 mkdir -p cs-unpack && cd cs-unpack
 ar x ../cloudstream-linux.deb
 tar -xJf data.tar.xz
@@ -243,7 +243,7 @@ Needs Android 6.0 or newer.
 
 ### Phone or tablet
 
-1. Open the [Releases page](https://github.com/sherazi5110/cloudstream-Linxdroid/releases) on the phone and download the `.apk`.
+1. Open the [Releases page](https://github.com/sherazi5110/stream-goat/releases) on the phone and download the `.apk`.
 2. Open it from the notification or the **Downloads** app.
 3. When Android asks, allow **Install unknown apps** for your browser or file manager, go back and tap **Install**.
 4. Open **Stream Goat**, go to **More → Extensions**, add a repository and install extensions.
@@ -257,7 +257,7 @@ Needs Android 6.0 or newer.
      (If Developer options is missing: Settings → My Fire TV → About → click the device name 7 times.)
    - **Android TV / Google TV:** Settings → Apps → Security & restrictions → Unknown sources → Downloader → On.
 3. In Downloader, enter the `.apk` link from the Releases page (right-click the file on a computer → *Copy link*),
-   or `https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest/download/streamgoat-android-armeabi-v7a.apk`,
+   or `https://github.com/sherazi5110/stream-goat/releases/latest/download/streamgoat-android-armeabi-v7a.apk`,
    and choose **Install**.
 
 **Other ways:** copy the `.apk` to a USB stick and open it with a file manager on the TV, or send it with the

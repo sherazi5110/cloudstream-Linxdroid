@@ -152,7 +152,7 @@ val packageWindows by tasks.registering(Exec::class) {
             addAll(listOf("--app-image", out.get().asFile.resolve("Stream Goat").path))
             addAll(listOf("--win-per-user-install", "--win-menu", "--win-menu-group", "Stream Goat", "--win-shortcut"))
             addAll(listOf("--win-upgrade-uuid", "6f1c2b9e-4d1a-4c2e-9a57-3e5b8d0c7a41"))
-            addAll(listOf("--about-url", "https://github.com/sherazi5110/cloudstream-Linxdroid"))
+            addAll(listOf("--about-url", "https://github.com/sherazi5110/stream-goat"))
         }
     })
 }

@@ -572,7 +572,7 @@ async function more() {
     <h2>On iPhone</h2>
     <p class="muted small">In Safari tap <b>Share</b> → <b>Add to Home Screen</b>. Stream Goat then opens full screen like an app, with its own storage.</p>
     <h2>About</h2>
-    <p class="muted small"><b style="color:var(--accent)">Created by Syed Ali Hamza.</b> Stream Goat web, the free browser version of <a href="https://github.com/sherazi5110/cloudstream-Linxdroid" style="color:var(--accent)">Stream Goat for Linux, Windows and Android</a>.
+    <p class="muted small"><b style="color:var(--accent)">Created by Syed Ali Hamza.</b> Stream Goat web, the free browser version of <a href="https://github.com/sherazi5110/stream-goat" style="color:var(--accent)">Stream Goat for Linux, Windows and Android</a>.
       It plays streams from Stremio add-ons; CloudStream extensions need the Linux, Windows or Android app. This page hosts no content.</p>
   </div>`;
   const form = $view.querySelector("#add");

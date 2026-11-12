@@ -1,11 +1,12 @@
 name: Web app (GitHub Pages)
 
-# Publishes webapp/ (the browser version, using Stremio add-ons) to
-# https://sherazi5110.github.io/cloudstream-Linxdroid/
+# Publishes the website to https://sherazi5110.github.io/stream-goat/ :
+#   /      the Stream Goat website (site/: about the app, downloads, screenshots)
+#   /app/  the web version (webapp/: the browser version, using Stremio add-ons)
 on:
   push:
     branches: [main]
-    paths: ["webapp/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "webapp/**", "docs/screenshots/**", "packaging/linux/cloudstream-linux.svg", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -26,8 +27,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Put the website together
+        run: |
+          mkdir -p _site/screenshots
+          cp -r site/. _site/
+          cp -r webapp _site/app
+          cp packaging/linux/cloudstream-linux.svg _site/logo.svg
+          for f in home intro search-suggest player-translate player-picture livetv-guide profiles player-skip theme-glass about; do
+            cp "docs/screenshots/$f.png" _site/screenshots/
+          done
+          ls -R _site | head -40
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: webapp
+          path: _site
       - id: deploy
         uses: actions/deploy-pages@v4
