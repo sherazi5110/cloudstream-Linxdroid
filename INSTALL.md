@@ -5,6 +5,7 @@ your device:
 
 | Your device | File | Section |
 |---|---|---|
+| Windows 10 or 11 | `cloudstream-windows-<version>.msi` (or the portable `.zip`) | [Windows](#windows-10-and-11) |
 | Ubuntu, Debian, Mint, Pop!_OS, Zorin, elementary, ChromeOS (Linux) | `cloudstream-linux_<version>_amd64.deb` | [.deb](#ubuntu-debian-linux-mint-popos-zorin-elementary-os-chromeos-linux) |
 | Any Linux distro with Flatpak (Fedora, Arch, openSUSE, Steam Deck…) | `cloudstream-linux.flatpak` | [Flatpak](#flatpak-any-distro) |
 | Other x86-64 Linux without Flatpak | the `.deb` (unpacked by hand) | [Other Linux](#fedora-arch-manjaro-opensuse-and-other-x86-64-linux-without-flatpak) |
@@ -19,6 +20,32 @@ Requirements for the Linux app:
 - a 64-bit PC (x86-64 / amd64);
 - **VLC** (the built-in player uses VLC's engine);
 - a desktop session (GNOME, KDE, Xfce, Cinnamon, …).
+
+---
+
+## Windows 10 and 11
+
+The Windows app is the same app as on Linux (same look, profiles, extensions, Stremio add-ons, Live TV, downloads),
+with its own Java and **VLC included**: nothing else to install. 64-bit Windows 10 or 11.
+
+**Installer (recommended)**
+1. From the [Releases page](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest), download
+   `cloudstream-windows-<version>.msi` and open it.
+2. If Windows shows **"Windows protected your PC"** (the installer isn't code-signed yet), click **More info →
+   Run anyway**.
+3. It installs for your user (no admin password) and adds **CloudStream** to the Start menu and the desktop.
+
+**Portable:** download `cloudstream-windows-<version>-portable.zip`, unzip it anywhere (e.g. a USB stick) and run
+`CloudStream\CloudStream.exe`.
+
+- **Update:** install the new `.msi`; your data is kept.
+- **Remove:** Settings → Apps → Installed apps → CloudStream → Uninstall. Your data stays in `%APPDATA%\CloudStream`
+  (delete that folder too to remove everything).
+- **Data:** `%APPDATA%\CloudStream` (extensions, profiles, library, settings). Downloads go to your Downloads folder,
+  in `CloudStream`.
+- **Command line:** `cloudstream-cli.exe` next to `CloudStream.exe` runs the same commands as on Linux
+  (`cloudstream-cli doctor`, `repo add`, `install`, `backup`, `restore`).
+- `cloudstreamrepo://` repository links on websites open in CloudStream after you've started it once.
 
 ---
 

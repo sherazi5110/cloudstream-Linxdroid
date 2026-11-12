@@ -1,0 +1,136 @@
+name: Windows
+
+# The Windows app: CloudStream.exe with its own Java runtime and VLC, as a portable .zip and an .msi installer.
+# Built and tested on a real Windows machine; on a version tag the files are attached to the release.
+on:
+  push:
+    branches: [main, windows]
+    tags: ["v*", "V*"]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      VLC_VERSION: "3.0.21"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch pinned upstream sources
+        run: ./scripts/fetch-upstream.sh
+
+      - name: VLC for Windows
+        # VideoLAN's 64-bit build; only the engine (libvlc + plugins) is kept, not VLC's own interface.
+        run: |
+          base="https://download.videolan.org/pub/videolan/vlc/$VLC_VERSION/win64"
+          curl -fsSL --retry 3 -o vlc.zip "$base/vlc-$VLC_VERSION-win64.zip"
+          actual=$(sha256sum vlc.zip | cut -d' ' -f1)
+          if curl -fsSL --retry 3 -o vlc.zip.sha256 "$base/vlc-$VLC_VERSION-win64.zip.sha256"; then
+            expected=$(cut -d' ' -f1 vlc.zip.sha256)
+            [ "$expected" = "$actual" ] || { echo "::error::VLC download checksum mismatch ($actual, expected $expected)"; exit 1; }
+            echo "VLC checksum OK: $actual"
+          else
+            echo "::warning::VideoLAN published no .sha256 for this file; downloaded sha256 is $actual"
+          fi
+          unzip -q vlc.zip -d vlc-unpacked
+          src="vlc-unpacked/vlc-$VLC_VERSION"
+          mkdir -p vlc
+          cp "$src/libvlc.dll" "$src/libvlccore.dll" vlc/
+          cp -r "$src/plugins" vlc/
+          rm -rf vlc/plugins/gui vlc/plugins/lua vlc/plugins/visualization vlc/plugins/video_splitter
+          du -sh vlc
+          echo "VLC_DIR=$(cygpath -w "$PWD/vlc")" >> "$GITHUB_ENV"
+          echo "$PWD/vlc" >> "$GITHUB_PATH"
+
+      - name: Test
+        # The same tests as on Linux: extensions (.cs3 and .jar), sources, the header proxy, subtitles, downloads,
+        # backup and libVLC playback with the bundled VLC.
+        run: |
+          if ! ./gradlew :app:test -Ptest.python=python -PvlcDir="$VLC_DIR"; then
+            python - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          for f in glob.glob("app/build/test-results/test/*.xml"):
+              for case in ET.parse(f).getroot().iter("testcase"):
+                  for fail in list(case.findall("failure")) + list(case.findall("error")):
+                      msg = (fail.get("message") or fail.text or "").replace("\n", " ")[:400]
+                      print(f"::error title={case.get('classname').split('.')[-1]}: {case.get('name')[:80]}::{msg}")
+          PY
+            exit 1
+          fi
+
+      - name: Windows app (portable) and installer (.msi)
+        run: |
+          ./gradlew :app:packageWindows -PvlcDir="$VLC_DIR"
+          ./gradlew :app:packageWindows -PvlcDir="$VLC_DIR" -PjpackageType=msi
+          VERSION=$(grep -o 'VERSION = "[^"]*"' app/src/main/kotlin/com/lagradost/cloudstream3/linux/ui/AppWindow.kt | cut -d'"' -f2)
+          mkdir -p build/windows
+          (cd app/build/jpackage-win && 7z a -tzip -bd -mx=7 "../../../build/windows/cloudstream-windows-$VERSION-portable.zip" CloudStream > /dev/null)
+          cp app/build/jpackage-win/CloudStream-*.msi "build/windows/cloudstream-windows-$VERSION.msi"
+          ls -la build/windows
+
+      - name: Check the packaged app
+        # The packaged app's own checker must find its Java, extensions folder and the bundled VLC.
+        run: |
+          app=app/build/jpackage-win/CloudStream
+          out=$(CLOUDSTREAM_HOME="$(cygpath -w "$PWD/doctor-home")" "$app/cloudstream-cli.exe" doctor 2>&1 || true)
+          echo "$out"
+          ls "$app/app/vlc" | head
+          if ! echo "$out" | grep -q "libVLC    3\."; then
+            echo "$out" | tail -25 | while IFS= read -r line; do echo "::warning title=doctor::${line:0:300}"; done
+            echo "::warning title=app folder::$(ls "$app/app" | tr '\n' ' ' | cut -c1-600)"
+            echo "::error::The packaged app didn't find its bundled VLC"; exit 1
+          fi
+
+      - name: Screenshots of the app window
+        # Starts CloudStream.exe in screenshot mode (the same tour as on Linux); the pictures are in the artifact.
+        run: |
+          mkdir -p shots
+          export CS_SCREENSHOT="$(cygpath -w "$PWD/shots")\\win" CS_SCREENSHOT_ONLY=settings7 CLOUDSTREAM_HOME="$(cygpath -w "$PWD/shot-home")"
+          timeout 180 app/build/jpackage-win/CloudStream/CloudStream.exe || true
+          ls shots
+          [ -n "$(ls shots)" ] || { echo "::error::No screenshots were taken"; exit 1; }
+          # A drawn window has many colours and the app's dark background; a blank one doesn't.
+          pip install -q pillow
+          python - <<'PY'
+          import glob
+          from PIL import Image
+          for f in sorted(glob.glob("shots/*.png")):
+              im = Image.open(f).convert("RGB")
+              small = im.resize((200, int(200 * im.height / im.width)))
+              colours = len(set(small.getdata()))
+              mean = [sum(c) / (small.width * small.height) for c in zip(*small.getdata())]
+              print(f"::notice title=screenshot::{f.split('/')[-1]} {im.width}x{im.height}, {colours} colours, mean RGB {[round(x) for x in mean]}")
+              if colours < 50: print(f"::error::{f} looks blank")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudstream-windows
+          path: |
+            build/windows/*.zip
+            build/windows/*.msi
+            shots/*.png
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/windows/*.zip
+            build/windows/*.msi

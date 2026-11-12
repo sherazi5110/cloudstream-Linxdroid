@@ -19,7 +19,13 @@ dependencies {
     implementation("org.ow2.asm:asm-tree:9.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.11.0")
     // JavaFX 21 LTS (runs on the Java 21 Ubuntu ships); GPU-accelerated, CSS-styled UI.
-    val fxPlatform = if (System.getProperty("os.arch") == "aarch64") "linux-aarch64" else "linux"
+    // JavaFX ships per-system native code: build on Windows for the Windows version.
+    val windows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+    val fxPlatform = when {
+        windows -> "win"
+        System.getProperty("os.arch") == "aarch64" -> "linux-aarch64"
+        else -> "linux"
+    }
     for (module in listOf("base", "graphics", "controls")) {
         implementation("org.openjfx:javafx-$module:21.0.8:$fxPlatform")
     }
@@ -53,6 +59,10 @@ tasks.test {
     systemProperty("demo.repo", demo.get().asFile.absolutePath)
     systemProperty("tests.dir", rootProject.file("tests").absolutePath)
     systemProperty("cloudstream.home", layout.buildDirectory.dir("test-home").get().asFile.absolutePath)
+    // The mock sites run with Python; Windows calls it "python" (-Ptest.python=python).
+    systemProperty("test.python", (findProperty("test.python") as String?) ?: "python3")
+    // Windows: the VLC folder the app bundles (-PvlcDir=...), for the libVLC playback test.
+    (findProperty("vlcDir") as String?)?.let { systemProperty("jna.library.path", it); systemProperty("cs.vlc.dir", it) }
     jvmArgs("-XX:+UnlockDiagnosticVMOptions", "-XX:-BytecodeVerificationRemote")
 }
 
@@ -97,5 +107,52 @@ val packageDeb by tasks.registering(Exec::class) {
             addAll(listOf("--linux-package-deps", "libvlc5, vlc-plugin-base"))
         }
         application.applicationDefaultJvmArgs.forEach { addAll(listOf("--java-options", it)) }
+    })
+}
+
+// Windows: the app image (CloudStream\CloudStream.exe with its own Java runtime and VLC) and the .msi installer,
+// built with the JDK's jpackage on Windows (CI: the "windows" job in .github/workflows/build.yml).
+//   ./gradlew :app:packageWindows -PvlcDir=C:\path\to\vlc                 -> build\jpackage-win\CloudStream\
+//   ./gradlew :app:packageWindows -PvlcDir=... -PjpackageType=msi          -> build\jpackage-win\CloudStream-<v>.msi
+val packageWindows by tasks.registering(Exec::class) {
+    group = "distribution"
+    dependsOn(tasks.installDist)
+    val lib = layout.buildDirectory.dir("install/cloudstream-linux/lib")
+    val input = layout.buildDirectory.dir("jpackage-win-input")
+    val out = layout.buildDirectory.dir("jpackage-win")
+    val version = file("src/main/kotlin/com/lagradost/cloudstream3/linux/ui/AppWindow.kt").readText()
+        .let { Regex("VERSION = \"([0-9.]+)").find(it)!!.groupValues[1] }
+    val type = (findProperty("jpackageType") as String?) ?: "app-image"
+    doFirst {
+        val inDir = input.get().asFile.apply { deleteRecursively(); mkdirs() }
+        lib.get().asFile.copyRecursively(inDir)
+        // VLC for Windows (libvlc.dll, libvlccore.dll, plugins\) goes into <app>\app\vlc; see Os.bundledVlcDir.
+        (findProperty("vlcDir") as String?)?.let { file(it).copyRecursively(inDir.resolve("vlc")) }
+        if (type == "app-image") out.get().asFile.deleteRecursively()
+    }
+    commandLine(buildList {
+        addAll(listOf("jpackage", "--type", type, "--name", "CloudStream", "--app-version", version))
+        addAll(listOf("--vendor", "CloudStream for Linux, Android and Windows", "--dest", out.get().asFile.path))
+        addAll(listOf("--description", "Run CloudStream extensions on Windows"))
+        if (type == "app-image") {
+            addAll(listOf("--input", input.get().asFile.path, "--main-jar", "app.jar", "--main-class", application.mainClass.get()))
+            addAll(listOf("--icon", rootProject.file("packaging/windows/cloudstream.ico").path))
+            // A second launcher with a console window for the command line (cloudstream-cli.exe doctor, install…).
+            addAll(listOf("--add-launcher", "cloudstream-cli=" + rootProject.file("packaging/windows/cli-launcher.properties").path))
+            addAll(listOf("--jlink-options", "--strip-debug --no-man-pages --no-header-files --strip-native-commands"))
+            addAll(listOf("--add-modules", listOf(
+                "java.base", "java.desktop", "java.logging", "java.management", "java.naming", "java.net.http",
+                "java.prefs", "java.scripting", "java.sql", "java.xml", "jdk.charsets", "jdk.crypto.ec",
+                "jdk.localedata", "jdk.unsupported", "jdk.zipfs", "jdk.httpserver",
+            ).joinToString(",")))
+            application.applicationDefaultJvmArgs.forEach { addAll(listOf("--java-options", it)) }
+        } else {
+            // The installer wraps the app image built first: per-user (no admin prompt), Start menu and desktop
+            // shortcuts, upgrades in place (the upgrade code never changes).
+            addAll(listOf("--app-image", out.get().asFile.resolve("CloudStream").path))
+            addAll(listOf("--win-per-user-install", "--win-menu", "--win-menu-group", "CloudStream", "--win-shortcut"))
+            addAll(listOf("--win-upgrade-uuid", "6f1c2b9e-4d1a-4c2e-9a57-3e5b8d0c7a41"))
+            addAll(listOf("--about-url", "https://github.com/sherazi5110/cloudstream-Linxdroid"))
+        }
     })
 }

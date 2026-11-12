@@ -1,13 +1,13 @@
-# CloudStream for Linux and Android
+# CloudStream for Linux, Windows and Android
 
-Run **CloudStream extensions and Stremio add-ons on Linux, Android phones and Android TV**, from the same repositories the
+Run **CloudStream extensions and Stremio add-ons on Linux, Windows, Android phones and Android TV**, from the same repositories the
 official Android app uses, with no changes to the extensions.
 
-**[Open the web version](https://sherazi5110.github.io/cloudstream-Linxdroid/)** (any phone or browser, Stremio add-ons) · **[Download](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** · **[How to install (.deb, Flatpak, .apk)](INSTALL.md)**
+**[Open the web version](https://sherazi5110.github.io/cloudstream-Linxdroid/)** (any phone or browser, Stremio add-ons) · **[Download](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** · **[How to install (Windows, .deb, Flatpak, .apk)](INSTALL.md)**
 
-| Linux | Android |
-|---|---|
-| `.deb` for Ubuntu, Debian, Mint, ChromeOS · `.flatpak` for any distro · `.tar` with your own Java | `.apk` for phones, tablets, Android TV and Fire TV (in testing) |
+| Linux | Windows | Android |
+|---|---|---|
+| `.deb` for Ubuntu, Debian, Mint, ChromeOS · `.flatpak` for any distro · `.tar` with your own Java | `.msi` installer or portable `.zip` for Windows 10/11, VLC included | `.apk` for phones, tablets, Android TV and Fire TV (in testing) |
 
 > **Android app (in testing):** a new app for **phones (touch)** and **Android TV (remote)** with this app's look,
 > profiles, Live TV, Stremio add-ons, TMDB and the VLC player. [More below](#android-app-in-testing).

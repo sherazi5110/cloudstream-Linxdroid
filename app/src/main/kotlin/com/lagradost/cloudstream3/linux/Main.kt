@@ -37,6 +37,7 @@ fun main(args: Array<String>) {
         Logs.init()
         Platform.init()
         Network.init()
+        Thread { Os.registerLinkHandler() }.apply { isDaemon = true }.start()
         // The window opens immediately; extensions load in the background (see ui.AppWindow).
         com.lagradost.cloudstream3.linux.ui.DesktopApp.launch(repoLink)
         return
@@ -158,7 +159,7 @@ suspend fun cli(args: List<String>): Int {
             println("java      ${System.getProperty("java.version")} (${System.getProperty("java.vendor")})")
             println("data      ${AppDirs.data}")
             println("log       ${Logs.file}")
-            println("libVLC    ${com.lagradost.cloudstream3.linux.ui.Vlc.version ?: "not found — sudo apt install libvlc5 vlc-plugin-base"}")
+            println("libVLC    ${com.lagradost.cloudstream3.linux.ui.Vlc.version ?: "not found — " + Os.vlcHint}")
             println("dns       ${Settings.dns.label}")
             println("repos     ${RepositoryManager.getRepositories().size}")
             println("plugins   ${PluginManager.loaded.size} loaded, ${PluginManager.failures.size} failed")

@@ -39,8 +39,8 @@ import java.util.logging.Logger
 import kotlin.system.exitProcess
 
 object AppInfo {
-    const val NAME = "CloudStream for Linux"
-    const val VERSION = "7.0.2"
+    val NAME = "CloudStream for " + com.lagradost.cloudstream3.linux.Os.name
+    const val VERSION = "7.1.0"
     const val CREDIT = "Tennant Creek"
 }
 

@@ -158,8 +158,7 @@ fun pageScroll(content: Node): ScrollPane = ScrollPane(content).apply {
     }
 }
 
-/** Opens a web page in the default browser (xdg-open; inside Flatpak this goes through the portal). */
+/** Opens a web page in the default browser. */
 fun openUrl(url: String) {
-    runCatching { ProcessBuilder("xdg-open", url).start() }
-        .onFailure { Toasts.show("Couldn't open a browser. The link is $url", seconds = 10.0) }
+    if (!com.lagradost.cloudstream3.linux.Os.open(url)) Toasts.show("Couldn't open a browser. The link is $url", seconds = 10.0)
 }
