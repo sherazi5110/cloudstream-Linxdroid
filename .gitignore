@@ -5,3 +5,4 @@ upstream/
 !tests/**/*.cs3
 .idea/
 local.properties
+.kotlin/

@@ -42,201 +42,46 @@ object Screenshots {
         delay(1500)
         // CS_SCREENSHOT_ONLY=v6: just the profiles / sections / add-on part (quicker while developing).
         if (System.getenv("CS_SCREENSHOT_ONLY") == "glass") {
-            Theme.mode = ThemeMode.GLASS
-            window.show(Tab.HOME)
-            delay(4000)
-            capture(window, "$prefix-theme-glass.png")
-            Theme.mode = ThemeMode.DARK
-            delay(2500)
-            capture(window, "$prefix-theme-dark.png")
-            System.exit(0)
+            modeGlass(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "tools") {
-            window.show(Tab.HOME)
-            delay(2500)
-            (window.lookup("#home-source") as? javafx.scene.control.Button)?.fire()
-            delay(700)
-            capture(window, "$prefix-source-menu-tune.png")
-            window.lookupAll(".popover-tune").drop(1).firstOrNull()?.let { javafx.event.Event.fireEvent(it, click()) }
-            delay(900)
-            capture(window, "$prefix-source-menu-editor.png")
-            window.closeOverlay()
-            window.openSettings("developer")
-            delay(1200)
-            capture(window, "$prefix-developer-delete.png")
-            window.lookupAll(".btn-danger").firstOrNull()?.let { (it as javafx.scene.control.Button).fire() }
-            delay(700)
-            capture(window, "$prefix-developer-delete-confirm.png")
-            window.lookupAll(".sheet .btn-danger").lastOrNull()?.let { (it as javafx.scene.control.Button).fire() }
-            delay(1200)
-            capture(window, "$prefix-developer-deleted.png")
-            System.err.println("check: installed=${com.lagradost.cloudstream3.linux.PluginManager.installed().map { it.internalName }} providers=${com.lagradost.cloudstream3.linux.Engine.allProviders().map { it.name }}")
-            System.exit(0)
+            modeTools(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "nsfw") {
-            window.openSettings("profiles")
-            delay(1500)
-            capture(window, "$prefix-settings-nsfw.png")
-            window.lookupAll(".switch").firstOrNull()?.let { javafx.event.Event.fireEvent(it, click()) }
-            delay(800)
-            capture(window, "$prefix-settings-nsfw-confirm.png")
-            System.exit(0)
+            modeNsfw(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "logos") {
-            System.setProperty("cs.logos.base", "http://localhost:8766/logos-api")
-            runCatching { com.lagradost.cloudstream3.linux.LiveTv.add(com.lagradost.cloudstream3.linux.LiveTv.Kind.M3U, "http://localhost:8766/iptv/playlist.m3u", "Free-TV", "http://localhost:8766/iptv/guide.xml") }
-            window.show(Tab.LIVE)
-            delay(5000)
-            capture(window, "$prefix-livetv-logos.png")
-            window.openSettings("livetv")
-            delay(1000)
-            capture(window, "$prefix-settings-livetv.png")
-            com.lagradost.cloudstream3.linux.LiveTv.saved().forEach { com.lagradost.cloudstream3.linux.LiveTv.remove(it.id) }
-            System.exit(0)
+            modeLogos(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "downloads") {
-            com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", "http://localhost:8766")
-            val demo = com.lagradost.cloudstream3.linux.Engine.allProviders().firstOrNull { it.name.contains("Demo", true) }
-                ?: com.lagradost.cloudstream3.linux.PluginManager.loadPlugin(java.io.File("tests/DemoProvider/build/repo/Demo.cs3"),
-                    com.lagradost.cloudstream3.linux.PluginData("Demo", null, false, "Demo.cs3", 1)).getOrThrow().providers.single()
-            com.lagradost.cloudstream3.linux.Settings.sourcesTimeoutSeconds = 3
-            com.lagradost.cloudstream3.linux.Settings.downloadFolder = "/tmp/cs-tour-downloads"
-            Nav.open(demo.name, "http://localhost:8766/title/pixel_city", "Pixel City", null)
-            delay(3000)
-            val r = com.lagradost.cloudstream3.linux.Engine.load(demo, "http://localhost:8766/title/pixel_city")!!
-            com.lagradost.cloudstream3.linux.Engine.playables(r).take(2).forEach { com.lagradost.cloudstream3.linux.Downloads.start(demo, r, it) }
-            delay(1500)
-            capture(window, "$prefix-details-downloading.png")
-            delay(8000)
-            capture(window, "$prefix-details-downloaded.png")
-            com.lagradost.cloudstream3.linux.ui.LibraryPage.wantDownloads = true
-            window.show(Tab.LIBRARY)
-            delay(1500)
-            capture(window, "$prefix-library-downloads.png")
-            com.lagradost.cloudstream3.linux.Downloads.all().forEach { com.lagradost.cloudstream3.linux.Downloads.delete(it.id) }
-            com.lagradost.cloudstream3.linux.Settings.downloadFolder = ""
-            System.exit(0)
+            modeDownloads(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "nulllang") {
-            // An extension whose language is missing (null), as some real ones are.
-            val odd = object : MainAPI() { override var name = "OddExtension" }
-            MainAPI::class.java.getDeclaredField("lang").apply { isAccessible = true }.set(odd, null)
-            synchronized(com.lagradost.cloudstream3.APIHolder.allProviders) { com.lagradost.cloudstream3.APIHolder.allProviders.add(odd) }
-            window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-nulllang.png")
-            System.exit(0)
+            modeNulllang(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "suggest") {
-            System.setProperty("cs.subtitles.meta", "http://localhost:8766/stremio/meta")
-            System.setProperty("cs.tmdb.base", "http://localhost:8766/tmdb/3")
-            com.lagradost.cloudstream3.linux.Metadata.tmdbKey = "0123456789abcdef0123456789abcdef"
-            window.show(Tab.SEARCH)
-            delay(800)
-            (window.lookup(".search-field") as? javafx.scene.control.TextField)?.let { f -> f.requestFocus(); f.text = "pix" }
-            delay(2000)
-            capture(window, "$prefix-search-suggest.png")
-            System.exit(0)
+            modeSuggest(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "goat") {
-            // Stream Goat (7.2): home, About, the new player settings, and the player's Picture and Translate menus.
-            val m = "http://localhost:8766"
-            com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", m)
-            com.lagradost.cloudstream3.linux.Settings.sourcesTimeoutSeconds = 3
-            window.show(Tab.HOME); delay(3500); capture(window, "$prefix-home.png")
-            window.openSettings("about"); delay(1500); capture(window, "$prefix-about.png")
-            window.openSettings("playback"); delay(1500); capture(window, "$prefix-settings-playback.png")
-            val demo = com.lagradost.cloudstream3.linux.Engine.allProviders().firstOrNull { it.name.contains("Demo", true) }
-                ?: com.lagradost.cloudstream3.linux.PluginManager.loadPlugin(java.io.File("tests/DemoProvider/build/repo/Demo.cs3"),
-                    com.lagradost.cloudstream3.linux.PluginData("Demo", null, false, "Demo.cs3", 1)).getOrThrow().providers.single()
-            val anime = demo.newAnimeLoadResponse("Pixel Anime", "$m/title/pixel_city", com.lagradost.cloudstream3.TvType.Anime) {
-                addEpisodes(com.lagradost.cloudstream3.DubStatus.Subbed, listOf(demo.newEpisode("pixel_city|1") { episode = 1; name = "The Missing Frame" }))
-            }
-            Playback.open(demo, anime, com.lagradost.cloudstream3.linux.Engine.playables(anime).first())
-            delay(12000)
-            (Playback.active as? BuiltinPlayer)?.showZoom(); delay(1200); capture(window, "$prefix-player-picture.png")
-            (Playback.active as? BuiltinPlayer)?.showTranslate(); delay(1200); capture(window, "$prefix-player-translate.png")
-            System.exit(0)
+            modeGoat(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "settings7") {
-            window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-extensions.png")
-            window.openSettings("storage"); delay(1500); capture(window, "$prefix-settings-storage.png")
-            System.exit(0)
+            modeSettings7(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "v7") {
-            val m = "http://localhost:8766"
-            com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", m)
-            System.setProperty("cs.tmdb.base", "$m/tmdb/3"); System.setProperty("cs.tmdb.images", "$m/tmdbimg/")
-            System.setProperty("cs.anilist", "$m/anilist"); System.setProperty("cs.aniskip", "$m/aniskip")
-            System.setProperty("cs.countdown.min", "60000")
-            com.lagradost.cloudstream3.linux.Metadata.tmdbKey = "0123456789abcdef0123456789abcdef"
-            com.lagradost.cloudstream3.linux.Settings.autoPlayNext = true
-            com.lagradost.cloudstream3.linux.Settings.sourcesTimeoutSeconds = 3
-            val demo = com.lagradost.cloudstream3.linux.Engine.allProviders().firstOrNull { it.name.contains("Demo", true) }
-                ?: com.lagradost.cloudstream3.linux.PluginManager.loadPlugin(java.io.File("tests/DemoProvider/build/repo/Demo.cs3"),
-                    com.lagradost.cloudstream3.linux.PluginData("Demo", null, false, "Demo.cs3", 1)).getOrThrow().providers.single()
-            Nav.open(demo.name, "$m/title/pixel_city", "Pixel City", null)
-            delay(4000)
-            window.lookupAll(".link-button").map { it as javafx.scene.control.Label }.firstOrNull { it.text == "Wrong match?" || it.text == "Find on TMDB" }
-                ?.let { javafx.event.Event.fireEvent(it, click()) }
-            delay(2500)
-            capture(window, "$prefix-match.png")
-            window.closeOverlay()
-            delay(500)
-            val anime = demo.newAnimeLoadResponse("Pixel Anime", "$m/title/pixel_city", com.lagradost.cloudstream3.TvType.Anime) {
-                addEpisodes(com.lagradost.cloudstream3.DubStatus.Subbed, listOf(
-                    demo.newEpisode("pixel_city|1") { episode = 1; name = "The Missing Frame" },
-                    demo.newEpisode("pixel_city|2") { episode = 2; name = "Compression" },
-                ))
-            }
-            Playback.open(demo, anime, com.lagradost.cloudstream3.linux.Engine.playables(anime).first())
-            delay(12000)
-            (Playback.active as? BuiltinPlayer)?.seekTo(8000)
-            delay(2500)
-            capture(window, "$prefix-player-skip.png")
-            (Playback.active as? BuiltinPlayer)?.seekTo(102_000)
-            delay(4000)
-            capture(window, "$prefix-player-next.png")
-            System.exit(0)
+            modeV7(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "guide") {
-            runCatching { com.lagradost.cloudstream3.linux.LiveTv.add(com.lagradost.cloudstream3.linux.LiveTv.Kind.M3U, "http://localhost:8766/iptv/playlist.m3u", "Free-TV", "http://localhost:8766/iptv/guide.xml") }
-            window.show(Tab.LIVE)
-            delay(4000)
-            window.lookupAll(".topbar-source").map { it as javafx.scene.control.Button }.firstOrNull { it.text == "TV guide" }?.fire()
-            delay(2500)
-            capture(window, "$prefix-livetv-guide.png")
-            com.lagradost.cloudstream3.linux.LiveTv.saved().forEach { com.lagradost.cloudstream3.linux.LiveTv.remove(it.id) }
-            System.exit(0)
+            modeGuide(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "kids") {
-            // The only profile set to kids, before parent PINs existed: the way out.
-            val me = com.lagradost.cloudstream3.linux.Profiles.current
-            com.lagradost.cloudstream3.linux.Profiles.update(me.copy(kids = true, filter = me.filter.copy(extensions = setOf("Demo"))))
-            delay(3000)
-            (window.lookup(".topbar-profile") as? javafx.scene.Node)?.let { javafx.event.Event.fireEvent(it, click()) }
-            delay(700)
-            capture(window, "$prefix-kids-menu.png")
-            clickPopover(window, "Exit kids profile")
-            delay(2500)
-            capture(window, "$prefix-kids-exited.png")
-            // Making a kids profile now asks for a parent PIN.
-            window.showOverlay(ProfileEditor(null))
-            delay(800)
-            window.lookupAll(".switch").lastOrNull()?.let { javafx.event.Event.fireEvent(it, click()) }
-            delay(800)
-            (window.lookup(".sheet")?.lookup(".scroll-pane") as? javafx.scene.control.ScrollPane)?.vvalue = 0.62
-            delay(700)
-            capture(window, "$prefix-kids-parent-pin.png")
-            System.exit(0)
+            modeKids(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "v601") {
-            v601Tour(window, prefix)
-            System.exit(0)
+            modeV601(window, prefix)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "v6") {
-            window.show(Tab.HOME)
-            delay(3000)
-            v6Tour(window, prefix)
-            System.exit(0)
+            modeV6(window, prefix)
         }
         for (tab in Tab.entries) {
             window.show(tab)
@@ -360,6 +205,231 @@ object Screenshots {
         delay(500)
         System.exit(0)
     }
+    /** CS_SCREENSHOT_ONLY=glass */
+    private suspend fun modeGlass(window: AppWindow, prefix: String) {
+            Theme.mode = ThemeMode.GLASS
+            window.show(Tab.HOME)
+            delay(4000)
+            capture(window, "$prefix-theme-glass.png")
+            Theme.mode = ThemeMode.DARK
+            delay(2500)
+            capture(window, "$prefix-theme-dark.png")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=tools */
+    private suspend fun modeTools(window: AppWindow, prefix: String) {
+            window.show(Tab.HOME)
+            delay(2500)
+            (window.lookup("#home-source") as? javafx.scene.control.Button)?.fire()
+            delay(700)
+            capture(window, "$prefix-source-menu-tune.png")
+            window.lookupAll(".popover-tune").drop(1).firstOrNull()?.let { javafx.event.Event.fireEvent(it, click()) }
+            delay(900)
+            capture(window, "$prefix-source-menu-editor.png")
+            window.closeOverlay()
+            window.openSettings("developer")
+            delay(1200)
+            capture(window, "$prefix-developer-delete.png")
+            window.lookupAll(".btn-danger").firstOrNull()?.let { (it as javafx.scene.control.Button).fire() }
+            delay(700)
+            capture(window, "$prefix-developer-delete-confirm.png")
+            window.lookupAll(".sheet .btn-danger").lastOrNull()?.let { (it as javafx.scene.control.Button).fire() }
+            delay(1200)
+            capture(window, "$prefix-developer-deleted.png")
+            System.err.println("check: installed=${com.lagradost.cloudstream3.linux.PluginManager.installed().map { it.internalName }} providers=${com.lagradost.cloudstream3.linux.Engine.allProviders().map { it.name }}")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=nsfw */
+    private suspend fun modeNsfw(window: AppWindow, prefix: String) {
+            window.openSettings("profiles")
+            delay(1500)
+            capture(window, "$prefix-settings-nsfw.png")
+            window.lookupAll(".switch").firstOrNull()?.let { javafx.event.Event.fireEvent(it, click()) }
+            delay(800)
+            capture(window, "$prefix-settings-nsfw-confirm.png")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=logos */
+    private suspend fun modeLogos(window: AppWindow, prefix: String) {
+            System.setProperty("cs.logos.base", "http://localhost:8766/logos-api")
+            runCatching { com.lagradost.cloudstream3.linux.LiveTv.add(com.lagradost.cloudstream3.linux.LiveTv.Kind.M3U, "http://localhost:8766/iptv/playlist.m3u", "Free-TV", "http://localhost:8766/iptv/guide.xml") }
+            window.show(Tab.LIVE)
+            delay(5000)
+            capture(window, "$prefix-livetv-logos.png")
+            window.openSettings("livetv")
+            delay(1000)
+            capture(window, "$prefix-settings-livetv.png")
+            com.lagradost.cloudstream3.linux.LiveTv.saved().forEach { com.lagradost.cloudstream3.linux.LiveTv.remove(it.id) }
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=downloads */
+    private suspend fun modeDownloads(window: AppWindow, prefix: String) {
+            com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", "http://localhost:8766")
+            val demo = com.lagradost.cloudstream3.linux.Engine.allProviders().firstOrNull { it.name.contains("Demo", true) }
+                ?: com.lagradost.cloudstream3.linux.PluginManager.loadPlugin(java.io.File("tests/DemoProvider/build/repo/Demo.cs3"),
+                    com.lagradost.cloudstream3.linux.PluginData("Demo", null, false, "Demo.cs3", 1)).getOrThrow().providers.single()
+            com.lagradost.cloudstream3.linux.Settings.sourcesTimeoutSeconds = 3
+            com.lagradost.cloudstream3.linux.Settings.downloadFolder = "/tmp/cs-tour-downloads"
+            Nav.open(demo.name, "http://localhost:8766/title/pixel_city", "Pixel City", null)
+            delay(3000)
+            val r = com.lagradost.cloudstream3.linux.Engine.load(demo, "http://localhost:8766/title/pixel_city")!!
+            com.lagradost.cloudstream3.linux.Engine.playables(r).take(2).forEach { com.lagradost.cloudstream3.linux.Downloads.start(demo, r, it) }
+            delay(1500)
+            capture(window, "$prefix-details-downloading.png")
+            delay(8000)
+            capture(window, "$prefix-details-downloaded.png")
+            com.lagradost.cloudstream3.linux.ui.LibraryPage.wantDownloads = true
+            window.show(Tab.LIBRARY)
+            delay(1500)
+            capture(window, "$prefix-library-downloads.png")
+            com.lagradost.cloudstream3.linux.Downloads.all().forEach { com.lagradost.cloudstream3.linux.Downloads.delete(it.id) }
+            com.lagradost.cloudstream3.linux.Settings.downloadFolder = ""
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=nulllang */
+    private suspend fun modeNulllang(window: AppWindow, prefix: String) {
+            // An extension whose language is missing (null), as some real ones are.
+            val odd = object : MainAPI() { override var name = "OddExtension" }
+            MainAPI::class.java.getDeclaredField("lang").apply { isAccessible = true }.set(odd, null)
+            synchronized(com.lagradost.cloudstream3.APIHolder.allProviders) { com.lagradost.cloudstream3.APIHolder.allProviders.add(odd) }
+            window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-nulllang.png")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=suggest */
+    private suspend fun modeSuggest(window: AppWindow, prefix: String) {
+            System.setProperty("cs.subtitles.meta", "http://localhost:8766/stremio/meta")
+            System.setProperty("cs.tmdb.base", "http://localhost:8766/tmdb/3")
+            com.lagradost.cloudstream3.linux.Metadata.tmdbKey = "0123456789abcdef0123456789abcdef"
+            window.show(Tab.SEARCH)
+            delay(800)
+            (window.lookup(".search-field") as? javafx.scene.control.TextField)?.let { f -> f.requestFocus(); f.text = "pix" }
+            delay(2000)
+            capture(window, "$prefix-search-suggest.png")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=goat */
+    private suspend fun modeGoat(window: AppWindow, prefix: String) {
+            // Stream Goat (7.2): home, About, the new player settings, and the player's Picture and Translate menus.
+            val m = "http://localhost:8766"
+            com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", m)
+            com.lagradost.cloudstream3.linux.Settings.sourcesTimeoutSeconds = 3
+            window.show(Tab.HOME); delay(3500); capture(window, "$prefix-home.png")
+            window.openSettings("about"); delay(1500); capture(window, "$prefix-about.png")
+            window.openSettings("playback"); delay(1500); capture(window, "$prefix-settings-playback.png")
+            val demo = com.lagradost.cloudstream3.linux.Engine.allProviders().firstOrNull { it.name.contains("Demo", true) }
+                ?: com.lagradost.cloudstream3.linux.PluginManager.loadPlugin(java.io.File("tests/DemoProvider/build/repo/Demo.cs3"),
+                    com.lagradost.cloudstream3.linux.PluginData("Demo", null, false, "Demo.cs3", 1)).getOrThrow().providers.single()
+            val anime = demo.newAnimeLoadResponse("Pixel Anime", "$m/title/pixel_city", com.lagradost.cloudstream3.TvType.Anime) {
+                addEpisodes(com.lagradost.cloudstream3.DubStatus.Subbed, listOf(demo.newEpisode("pixel_city|1") { episode = 1; name = "The Missing Frame" }))
+            }
+            Playback.open(demo, anime, com.lagradost.cloudstream3.linux.Engine.playables(anime).first())
+            delay(12000)
+            (Playback.active as? BuiltinPlayer)?.showZoom(); delay(1200); capture(window, "$prefix-player-picture.png")
+            (Playback.active as? BuiltinPlayer)?.showTranslate(); delay(1200); capture(window, "$prefix-player-translate.png")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=settings7 */
+    private suspend fun modeSettings7(window: AppWindow, prefix: String) {
+            window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-extensions.png")
+            window.openSettings("storage"); delay(1500); capture(window, "$prefix-settings-storage.png")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=v7 */
+    private suspend fun modeV7(window: AppWindow, prefix: String) {
+            val m = "http://localhost:8766"
+            com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", m)
+            System.setProperty("cs.tmdb.base", "$m/tmdb/3"); System.setProperty("cs.tmdb.images", "$m/tmdbimg/")
+            System.setProperty("cs.anilist", "$m/anilist"); System.setProperty("cs.aniskip", "$m/aniskip")
+            System.setProperty("cs.countdown.min", "60000")
+            com.lagradost.cloudstream3.linux.Metadata.tmdbKey = "0123456789abcdef0123456789abcdef"
+            com.lagradost.cloudstream3.linux.Settings.autoPlayNext = true
+            com.lagradost.cloudstream3.linux.Settings.sourcesTimeoutSeconds = 3
+            val demo = com.lagradost.cloudstream3.linux.Engine.allProviders().firstOrNull { it.name.contains("Demo", true) }
+                ?: com.lagradost.cloudstream3.linux.PluginManager.loadPlugin(java.io.File("tests/DemoProvider/build/repo/Demo.cs3"),
+                    com.lagradost.cloudstream3.linux.PluginData("Demo", null, false, "Demo.cs3", 1)).getOrThrow().providers.single()
+            Nav.open(demo.name, "$m/title/pixel_city", "Pixel City", null)
+            delay(4000)
+            window.lookupAll(".link-button").map { it as javafx.scene.control.Label }.firstOrNull { it.text == "Wrong match?" || it.text == "Find on TMDB" }
+                ?.let { javafx.event.Event.fireEvent(it, click()) }
+            delay(2500)
+            capture(window, "$prefix-match.png")
+            window.closeOverlay()
+            delay(500)
+            val anime = demo.newAnimeLoadResponse("Pixel Anime", "$m/title/pixel_city", com.lagradost.cloudstream3.TvType.Anime) {
+                addEpisodes(com.lagradost.cloudstream3.DubStatus.Subbed, listOf(
+                    demo.newEpisode("pixel_city|1") { episode = 1; name = "The Missing Frame" },
+                    demo.newEpisode("pixel_city|2") { episode = 2; name = "Compression" },
+                ))
+            }
+            Playback.open(demo, anime, com.lagradost.cloudstream3.linux.Engine.playables(anime).first())
+            delay(12000)
+            (Playback.active as? BuiltinPlayer)?.seekTo(8000)
+            delay(2500)
+            capture(window, "$prefix-player-skip.png")
+            (Playback.active as? BuiltinPlayer)?.seekTo(102_000)
+            delay(4000)
+            capture(window, "$prefix-player-next.png")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=guide */
+    private suspend fun modeGuide(window: AppWindow, prefix: String) {
+            runCatching { com.lagradost.cloudstream3.linux.LiveTv.add(com.lagradost.cloudstream3.linux.LiveTv.Kind.M3U, "http://localhost:8766/iptv/playlist.m3u", "Free-TV", "http://localhost:8766/iptv/guide.xml") }
+            window.show(Tab.LIVE)
+            delay(4000)
+            window.lookupAll(".topbar-source").map { it as javafx.scene.control.Button }.firstOrNull { it.text == "TV guide" }?.fire()
+            delay(2500)
+            capture(window, "$prefix-livetv-guide.png")
+            com.lagradost.cloudstream3.linux.LiveTv.saved().forEach { com.lagradost.cloudstream3.linux.LiveTv.remove(it.id) }
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=kids */
+    private suspend fun modeKids(window: AppWindow, prefix: String) {
+            // The only profile set to kids, before parent PINs existed: the way out.
+            val me = com.lagradost.cloudstream3.linux.Profiles.current
+            com.lagradost.cloudstream3.linux.Profiles.update(me.copy(kids = true, filter = me.filter.copy(extensions = setOf("Demo"))))
+            delay(3000)
+            (window.lookup(".topbar-profile") as? javafx.scene.Node)?.let { javafx.event.Event.fireEvent(it, click()) }
+            delay(700)
+            capture(window, "$prefix-kids-menu.png")
+            clickPopover(window, "Exit kids profile")
+            delay(2500)
+            capture(window, "$prefix-kids-exited.png")
+            // Making a kids profile now asks for a parent PIN.
+            window.showOverlay(ProfileEditor(null))
+            delay(800)
+            window.lookupAll(".switch").lastOrNull()?.let { javafx.event.Event.fireEvent(it, click()) }
+            delay(800)
+            (window.lookup(".sheet")?.lookup(".scroll-pane") as? javafx.scene.control.ScrollPane)?.vvalue = 0.62
+            delay(700)
+            capture(window, "$prefix-kids-parent-pin.png")
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=v601 */
+    private suspend fun modeV601(window: AppWindow, prefix: String) {
+            v601Tour(window, prefix)
+            System.exit(0)
+        }
+
+    /** CS_SCREENSHOT_ONLY=v6 */
+    private suspend fun modeV6(window: AppWindow, prefix: String) {
+            window.show(Tab.HOME)
+            delay(3000)
+            v6Tour(window, prefix)
+            System.exit(0)
+        }
+
 
     /** Sections, profiles, the kids profile and a Stremio add-on (v6). */
     private suspend fun v6Tour(window: AppWindow, prefix: String) {
