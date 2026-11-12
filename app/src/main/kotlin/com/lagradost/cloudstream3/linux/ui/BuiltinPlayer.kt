@@ -11,6 +11,7 @@ import com.lagradost.cloudstream3.linux.Library
 import com.lagradost.cloudstream3.linux.OnlineSubtitles
 import com.lagradost.cloudstream3.linux.Playable
 import com.lagradost.cloudstream3.linux.Settings
+import com.lagradost.cloudstream3.linux.SubtitleTranslator
 import com.lagradost.cloudstream3.linux.StreamProxy
 import com.lagradost.cloudstream3.linux.WatchEntry
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -94,6 +95,9 @@ class BuiltinPlayer(
     private val addedSubtitles = mutableSetOf<String>()
     /** Names for subtitle files added at runtime, in order; libVLC only calls them "Track N". */
     private val slaveNames = mutableListOf<String>()
+    /** The file behind each of [slaveNames], for translation. */
+    private val slaveFiles = mutableListOf<File>()
+    private var translateJob: Job? = null
     private var subtitlesFor: String? = null
     private var onlineJob: Job? = null
     private var onlineResults: List<OnlineSubtitles.Result>? = null
@@ -225,6 +229,7 @@ class BuiltinPlayer(
         startAt?.takeIf { it > 1000 }?.let { opts += ":start-time=${it / 1000.0}" }
         addedSubtitles.clear()
         slaveNames.clear()
+        slaveFiles.clear()
         audioPicked = false
         subtitlesFor = null
         if (!player.media().play(url, *opts.toTypedArray())) {
@@ -645,10 +650,61 @@ class BuiltinPlayer(
         }
         items += PlayerMenu.Item("Search online (OpenSubtitles)…", hint = "free, no account", icon = Icons.CLOUD_DOWNLOAD, keepOpen = true) { showOnline() }
         items += PlayerMenu.Item("Load from file…", icon = Icons.FILE) { menu.close(); loadSubtitleFile() }
+        items += PlayerMenu.Item("Translate subtitles to…", hint = "AI", icon = Icons.LANGUAGE, keepOpen = true) { showTranslate() }
         items += PlayerMenu.Item("Delay: $delay ms", enabled = false) {}
         items += PlayerMenu.Item("Show earlier (−100 ms)", hint = "G", keepOpen = true) { subDelay(-100); showSubtitles() }
         items += PlayerMenu.Item("Show later (+100 ms)", hint = "H", keepOpen = true) { subDelay(100); showSubtitles() }
         menu.open("subtitles", "Subtitles", items)
+    }
+
+    private fun addSubtitleFile(file: File, name: String, select: Boolean) {
+        slaveNames += name
+        slaveFiles += file
+        player.media().addSlave(MediaSlaveType.SUBTITLE, file.toPath().toUri().toString(), select)
+    }
+
+    /** The subtitle file to translate: the added track that's showing, else the first added one. */
+    private fun translateSource(): Pair<File, String>? {
+        val real = player.subpictures().trackDescriptions().filter { it.id() >= 0 }
+        val firstAdded = real.size - slaveNames.size
+        val i = real.indexOfFirst { it.id() == player.subpictures().track() } - firstAdded
+        val pick = if (i in slaveFiles.indices) i else slaveFiles.indices.firstOrNull { !slaveNames[it].contains("→") } ?: slaveFiles.indices.firstOrNull()
+        return pick?.let { slaveFiles[it] to slaveNames[it] }
+    }
+
+    /** Languages to translate into, most spoken first. */
+    private fun showTranslate() {
+        val items = mutableListOf<PlayerMenu.Item>()
+        items += PlayerMenu.Item("Back", icon = Icons.BACK, keepOpen = true) { showSubtitles() }
+        val source = translateSource()
+        if (source == null) {
+            items += PlayerMenu.Item("No subtitle file to translate yet", enabled = false) {}
+            items += PlayerMenu.Item("Search online (OpenSubtitles)…", icon = Icons.CLOUD_DOWNLOAD, keepOpen = true) { showOnline() }
+        } else {
+            items += PlayerMenu.Item("From: ${source.second}", enabled = false) {}
+            SubtitleTranslator.languages.forEach { (code, name) ->
+                items += PlayerMenu.Item(name, hint = code) { translateTo(source, code) }
+            }
+        }
+        menu.open("translate", "Translate subtitles", items)
+    }
+
+    private fun translateTo(source: Pair<File, String>, lang: String) {
+        menu.close()
+        val name = SubtitleTranslator.languageName(lang)
+        flash("Translating subtitles to $name…")
+        translateJob?.cancel()
+        translateJob = ui.launch {
+            try {
+                val out = SubtitleTranslator.translateFile(source.first, lang, File(AppDirs.data, "cache/subtitles"))
+                if (finished) return@launch
+                addSubtitleFile(out, "${source.second} → $name", true)
+                flash("Subtitles: $name (translated)")
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                flash("Couldn't translate: ${t.message ?: t}")
+            }
+        }
     }
 
     private fun subDelay(ms: Long) {
@@ -710,8 +766,7 @@ class BuiltinPlayer(
             try {
                 val file = OnlineSubtitles.download(result)
                 addedSubtitles += result.url
-                slaveNames += "$label (online)"
-                player.media().addSlave(MediaSlaveType.SUBTITLE, file.toPath().toUri().toString(), true)
+                addSubtitleFile(file, "$label (online)", true)
                 flash("Subtitles: $label")
             } catch (t: Throwable) {
                 flash("Couldn't download subtitles: ${t.message ?: t}")
@@ -730,8 +785,7 @@ class BuiltinPlayer(
                 val file = runCatching { downloadSubtitle(sub) }.getOrNull() ?: continue
                 if (finished) return@launch
                 val select = wanted.isNotBlank() && player.subpictures().track() < 0 && OnlineSubtitles.matches(sub.lang, wanted)
-                slaveNames += sub.lang
-                player.media().addSlave(MediaSlaveType.SUBTITLE, file.toPath().toUri().toString(), select)
+                addSubtitleFile(file, sub.lang, select)
             }
         }
     }
@@ -757,8 +811,7 @@ class BuiltinPlayer(
             title = "Load subtitles"
             extensionFilters += FileChooser.ExtensionFilter("Subtitles", "*.srt", "*.vtt", "*.ass", "*.ssa", "*.sub", "*.txt")
         }.showOpenDialog(Nav.window.stage) ?: return
-        slaveNames += file.name
-        player.media().addSlave(MediaSlaveType.SUBTITLE, file.toPath().toUri().toString(), true)
+        addSubtitleFile(file, file.name, true)
         flash("Subtitles: ${file.name}")
     }
 
