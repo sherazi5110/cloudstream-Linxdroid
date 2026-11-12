@@ -135,7 +135,7 @@ The `.deb` and Flatpak bring everything they need (VLC is installed with the `.d
 | ![Online subtitles](docs/screenshots/player-online.png) | ![Subtitle on screen](docs/screenshots/player-subtitle.png) |
 | ![Zoom](docs/screenshots/player-zoom.png) | ![Loading](docs/screenshots/loading.png) |
 | ![Home manager](docs/screenshots/home-manager.png) | ![Catalog editor](docs/screenshots/home-catalogs.png) |
-| ![Combined feed](docs/screenshots/home-feed.png) | ![Extensions](docs/screenshots/extensions.png) |
+| ![Appearance settings](docs/screenshots/settings-appearance.png) | ![Extensions](docs/screenshots/extensions.png) |
 | ![Settings](docs/screenshots/settings.png) | ![Light theme](docs/screenshots/theme-light.png) |
 
 *(Screenshots use the offline demo extension in `tests/DemoProvider` and the mock Stremio add-on in `tests/mock-archive`.)*
@@ -147,13 +147,17 @@ See **[docs/ANALYSIS.md](docs/ANALYSIS.md)** for how the Android app works, and 
 The Android app is a new app (not a fork of the official one) with the same look, features and simplicity as the
 desktop app. It's in testing: releases from V7 include `.apk` files, and test builds can be downloaded from the latest
 [Build workflow run](https://github.com/sherazi5110/stream-goat/actions/workflows/build.yml) (artifact
-`streamgoat-android`). The pictures below are the approved design previews; on landscape tablets and TV the app uses
-the Linux app's icon rail, top bar, banner and title page.
+`streamgoat-android`). The pictures below are the real Android screens (drawn from the app's code with Paparazzi,
+before any extensions are added); on landscape tablets and TV the app uses the desktop app's icon rail.
+
+| | | |
+|---|---|---|
+| ![Phone: Home before adding extensions](docs/android/phone-home.png) | ![Phone: Settings](docs/android/phone-settings.png) | ![Phone: About, created by Syed Ali Hamza](docs/android/phone-about.png) |
+| ![Phone: Search](docs/android/phone-search.png) | ![Phone: Player settings with HDR](docs/android/phone-player-settings.png) | |
 
 | | |
 |---|---|
-| ![Phone: Home and title page (design preview)](docs/android/mock-phone.png) | ![Phone: VLC player (design preview)](docs/android/mock-phone-player.png) |
-| ![Android TV: Home with remote focus (design preview)](docs/android/mock-tv.png) | ![Android TV: Live TV (design preview)](docs/android/mock-tv-live.png) |
+| ![Tablet and TV: Home with the icon rail](docs/android/tablet-home.png) | ![Tablet and TV: Settings](docs/android/tablet-settings.png) |
 
 **Layouts**
 - **Phone and tablet (touch):** a swipeable featured banner, Continue Watching, catalog rows, and a bottom bar

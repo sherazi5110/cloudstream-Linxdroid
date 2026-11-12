@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     kotlin("android")
     kotlin("plugin.compose")
+    id("app.cash.paparazzi")
 }
 
 android {
@@ -125,4 +126,9 @@ dependencies {
 
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    testImplementation("junit:junit:4.13.2")
 }
+
+// Paparazzi (Android screenshots drawn on the computer: ./gradlew :app:recordPaparazziDebug) clashes with
+// Gradle's HTML test report; the XML results are kept.
+tasks.withType<Test>().configureEach { reports.html.required.set(false) }
