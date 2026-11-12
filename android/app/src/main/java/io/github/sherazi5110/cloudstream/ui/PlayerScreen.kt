@@ -459,7 +459,7 @@ private fun LoadingOverlay(c: PlayerController, onChoose: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 12.dp)) {
                 // While a source is starting, "Play now" would only restart it: offer the next one instead.
                 if (c.current != null) PillButton("Next source", Icons.Filled.SkipNext) { c.nextSource() }
-                else if (c.links.isNotEmpty()) PillButton("Play now", Icons.Filled.PlayArrow) { c.ranked().firstOrNull()?.let { c.play(it) } }
+                else if (c.links.isNotEmpty()) PillButton(if (c.searching) "Play now (${c.links.size})" else "Play now", Icons.Filled.PlayArrow) { c.ranked().firstOrNull()?.let { c.play(it) } }
                 if (c.links.isNotEmpty()) PillButton("Choose source", Icons.AutoMirrored.Filled.List, primary = false) { onChoose() }
                 PillButton("Cancel", null, primary = false) { Nav.back() }
             }
