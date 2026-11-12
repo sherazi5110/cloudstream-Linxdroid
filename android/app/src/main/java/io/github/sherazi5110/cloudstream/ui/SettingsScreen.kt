@@ -372,7 +372,7 @@ private fun NetworkSection() {
 @Composable
 private fun AboutSection() {
     val context = LocalContext.current
-    val versionName = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() }
+    val versionName = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: io.github.sherazi5110.cloudstream.BuildConfig.VERSION_NAME }
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
         Logo(48.dp)
         Column(Modifier.padding(start = 12.dp)) {
