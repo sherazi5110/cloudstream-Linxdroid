@@ -118,7 +118,9 @@ object PluginManager {
 
         val instance = loader.loadClass(className).getDeclaredConstructor().newInstance() as BasePlugin
         instance.filename = file.absolutePath
-        if (manifest.requiresResources) (instance as? Plugin)?.resources = Resources.EMPTY
+        // Files packed under assets/ in the extension (read through resources.assets, as on Android).
+        android.content.res.AssetManager.register(file)
+        (instance as? Plugin)?.let { if (manifest.requiresResources || it.resources == null) it.resources = Resources(android.content.res.AssetManager(file)) }
 
         synchronized(registerLock) {
             if (instance is Plugin) instance.load(Platform.context) else instance.load()
@@ -143,6 +145,7 @@ object PluginManager {
         APIHolder.allProviders.withLock { APIHolder.allProviders.removeAll { it.sourcePlugin == owner } }
         extractorApis.withLock { extractorApis.removeAll { it.sourcePlugin == owner } }
         runCatching { plugin.loader.close() }
+        android.content.res.AssetManager.unregister(java.io.File(absolutePath))
         changed()
     }
 

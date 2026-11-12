@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches: [main]
-    tags: ["v*", "V*"]
+    tags: ["v*", "V*", "[0-9]*"]
   pull_request:
 
 jobs:
