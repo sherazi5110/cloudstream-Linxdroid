@@ -120,6 +120,17 @@ object Screenshots {
             window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-nulllang.png")
             System.exit(0)
         }
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "suggest") {
+            System.setProperty("cs.subtitles.meta", "http://localhost:8766/stremio/meta")
+            System.setProperty("cs.tmdb.base", "http://localhost:8766/tmdb/3")
+            com.lagradost.cloudstream3.linux.Metadata.tmdbKey = "0123456789abcdef0123456789abcdef"
+            window.show(Tab.SEARCH)
+            delay(800)
+            (window.lookup(".search-field") as? javafx.scene.control.TextField)?.let { f -> f.requestFocus(); f.text = "pix" }
+            delay(2000)
+            capture(window, "$prefix-search-suggest.png")
+            System.exit(0)
+        }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "settings7") {
             window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-extensions.png")
             window.openSettings("storage"); delay(1500); capture(window, "$prefix-settings-storage.png")

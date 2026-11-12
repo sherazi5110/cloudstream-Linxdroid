@@ -117,14 +117,23 @@ fun CatalogScreen(screen: Screen.Catalog) {
 fun SearchScreen() {
     val results = remember { mutableStateListOf<Pair<MainAPI, List<SearchResponse>>>() }
     var searching by remember { mutableStateOf(0) }
-    val query = Nav.searchQuery
+    val typed = Nav.searchQuery
+    val query = Nav.searchSubmitted
     val focus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    // Suggestions while typing, like the official app (TMDB with the user's key, else Cinemeta).
+    var suggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(typed) {
+        suggestions = emptyList()
+        if (typed.trim().length < 2 || typed.trim() == query.trim()) return@LaunchedEffect
+        delay(220)
+        suggestions = io.github.sherazi5110.cloudstream.Metadata.suggestions(typed)
+    }
+    val submit: (String) -> Unit = { q -> Nav.searchQuery = q; Nav.searchSubmitted = q.trim(); suggestions = emptyList(); focusManager.clearFocus() }
 
     LaunchedEffect(query) {
         results.clear()
         if (query.isBlank()) return@LaunchedEffect
-        delay(450) // search when typing pauses
         val apis = Engine.providers()
         searching = apis.size
         Engine.search(query.trim(), apis).collect { batch ->
@@ -138,20 +147,31 @@ fun SearchScreen() {
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         OutlinedTextField(
             value = query,
-            onValueChange = { Nav.searchQuery = it },
+            onValueChange = { Nav.searchQuery = it; if (it.isBlank()) Nav.searchSubmitted = "" },
             placeholder = { Text("Search films, series, anime…") },
             leadingIcon = { Icon(Icons.Filled.Search, null) },
-            trailingIcon = { if (query.isNotEmpty()) Icon(Icons.Filled.Close, "Clear", Modifier.card(CircleShape) { Nav.searchQuery = "" }.padding(6.dp)) },
+            trailingIcon = { if (query.isNotEmpty()) Icon(Icons.Filled.Close, "Clear", Modifier.card(CircleShape) { Nav.searchQuery = ""; Nav.searchSubmitted = "" }.padding(6.dp)) },
             singleLine = true,
             shape = RoundedCornerShape(50),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+            keyboardActions = KeyboardActions(onSearch = { submit(typed) }),
             colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Palette.surface, focusedContainerColor = Palette.surface,
                 unfocusedBorderColor = Color.Transparent, focusedBorderColor = Palette.accent),
             modifier = Modifier.fillMaxWidth().padding(16.dp).focusRequester(focus),
         )
+        if (suggestions.isNotEmpty()) Column(
+            Modifier.padding(horizontal = 16.dp).fillMaxWidth().background(Palette.surfaceHigh, RoundedCornerShape(14.dp)).padding(6.dp),
+        ) {
+            suggestions.forEach { s ->
+                Row(Modifier.fillMaxWidth().card(RoundedCornerShape(10.dp), focusScale = 1.02f) { submit(s) }.padding(horizontal = 12.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Filled.Search, null, tint = Palette.muted, modifier = Modifier.size(18.dp))
+                    Text(s, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+            }
+        }
         when {
-            query.isBlank() -> EmptyState("Search", "Type a title; every installed extension is searched at once.", Modifier.fillMaxWidth())
+            query.isBlank() -> if (suggestions.isEmpty()) EmptyState("Search", "Type a title and press Search, or pick a suggestion; every installed extension is searched at once.", Modifier.fillMaxWidth())
             results.isEmpty() && searching > 0 -> Spinner(Modifier.fillMaxWidth().height(200.dp))
             results.isEmpty() -> EmptyState("Nothing found", "No extension had results for \"$query\".", Modifier.fillMaxWidth())
             else -> androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {

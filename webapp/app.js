@@ -220,6 +220,27 @@ async function search(params) {
   const form = $view.querySelector("form");
   const results = $view.querySelector("#results");
   form.addEventListener("submit", (e) => { e.preventDefault(); form.q.blur(); location.hash = `#/search?${qs({ q: form.q.value.trim() })}`; });
+  // Suggestions while typing (Cinemeta titles), like the apps; a tap searches.
+  const box = document.createElement("div");
+  box.className = "suggest-box"; box.hidden = true;
+  form.appendChild(box);
+  let timer, seq = 0;
+  form.q.addEventListener("input", () => {
+    clearTimeout(timer);
+    const q = form.q.value.trim();
+    if (q.length < 2) { box.hidden = true; return; }
+    timer = setTimeout(async () => {
+      const mine = ++seq;
+      const names = (await Promise.all(["movie", "series"].map((t) =>
+        fetchJson(`https://v3-cinemeta.strem.io/catalog/${t}/top/search=${encodeURIComponent(q)}.json`, 8000).then((r) => (r.metas || []).map((m) => m.name)).catch(() => []))))
+        .flat().filter(Boolean);
+      if (mine !== seq) return;
+      const list = [...new Set(names.sort((a, b) => (b.toLowerCase().startsWith(q.toLowerCase())) - (a.toLowerCase().startsWith(q.toLowerCase()))))].slice(0, 8);
+      box.innerHTML = list.map((n) => `<button type="button" class="option">${esc(n)}</button>`).join("");
+      box.hidden = !list.length;
+      box.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { form.q.value = b.textContent; box.hidden = true; form.requestSubmit(); }));
+    }, 250);
+  });
   if (!params.q) { form.q.focus(); results.innerHTML = `<div class="empty">Searches every add-on that can search.</div>`; return; }
   const targets = addons().flatMap((a) => (a.manifest.catalogs || []).filter((c) => (c.extra || []).some((e) => e.name === "search") || (c.extraSupported || []).includes("search")).map((c) => ({ a, c })));
   if (!targets.length) { results.innerHTML = `<div class="empty"><b>No add-on can search</b>Add one in the Add-ons tab.</div>`; return; }

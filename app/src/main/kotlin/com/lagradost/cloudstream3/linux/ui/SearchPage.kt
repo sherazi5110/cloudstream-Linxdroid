@@ -24,17 +24,37 @@ class SearchPage : StackPane(), Refreshable {
     private val status = hbox(10.0)
     private val results = VBox(30.0)
     private var job: Job? = null
-    private val debounce = PauseTransition(Duration.millis(450.0)).apply { setOnFinished { run() } }
+    // Suggestions drop down while typing (like the official app); Enter or a pick runs the search.
+    private val suggestBox = VBox(2.0).apply { styleClass += "suggest-box"; isVisible = false; isManaged = false; maxWidth = 760.0 }
+    private var suggestJob: Job? = null
+    private var highlighted = -1
+    private var suggestions: List<String> = emptyList()
+    private val debounce = PauseTransition(Duration.millis(220.0)).apply { setOnFinished { suggest() } }
     private var lastQuery = ""
+    private var picking = false
 
     init {
         val searchIcon = icon(Icons.SEARCH, 20.0).apply { styleClass += "faint-icon" }
         val fieldBox = StackPane(field, searchIcon).apply { maxWidth = 760.0 }
         StackPane.setAlignment(searchIcon, Pos.CENTER_LEFT)
         StackPane.setMargin(searchIcon, javafx.geometry.Insets(0.0, 0.0, 0.0, 16.0))
-        field.textProperty().addListener { _, _, _ -> debounce.playFromStart() }
-        field.setOnAction { debounce.stop(); run() }
-        val top = vbox(16.0, label("Search", "h2"), fieldBox, filter, status)
+        field.textProperty().addListener { _, _, _ -> if (!picking) debounce.playFromStart() }
+        field.setOnAction {
+            debounce.stop()
+            val pick = suggestions.getOrNull(highlighted)
+            hideSuggestions()
+            if (pick != null) pickSuggestion(pick) else run()
+        }
+        field.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED) { e ->
+            when (e.code) {
+                javafx.scene.input.KeyCode.DOWN -> if (suggestBox.isVisible) { highlight(highlighted + 1); e.consume() }
+                javafx.scene.input.KeyCode.UP -> if (suggestBox.isVisible) { highlight(highlighted - 1); e.consume() }
+                javafx.scene.input.KeyCode.ESCAPE -> if (suggestBox.isVisible) { hideSuggestions(); e.consume() }
+                else -> Unit
+            }
+        }
+        field.focusedProperty().addListener { _, _, f -> if (!f) PauseTransition(Duration.millis(150.0)).apply { setOnFinished { hideSuggestions() } }.play() }
+        val top = vbox(16.0, label("Search", "h2"), vbox(6.0, fieldBox, suggestBox), filter, status)
         children += pageScroll(vbox(26.0, top, results).pad(22.0, 36.0, 40.0, 36.0))
         ui.launch { PluginManager.version.collect { refreshProviders() } }
     }
@@ -49,6 +69,47 @@ class SearchPage : StackPane(), Refreshable {
             results.children.setAll(emptyState(Icons.SEARCH, "Find something to watch", "Results stream in from every installed extension as each one answers. Press / anywhere to search."))
         }
         javafx.application.Platform.runLater { field.requestFocus() }
+    }
+
+    private fun suggest() {
+        val q = field.text.trim()
+        suggestJob?.cancel()
+        if (q.length < 2 || q == lastQuery) { hideSuggestions(); return }
+        suggestJob = ui.launch {
+            val list = com.lagradost.cloudstream3.linux.Metadata.suggestions(q)
+            if (field.text.trim() != q) return@launch
+            suggestions = list
+            highlighted = -1
+            suggestBox.children.setAll(list.mapIndexed { i, text ->
+                hbox(12.0, icon(Icons.SEARCH, 16.0).apply { styleClass += "faint-icon" }, label(text, "suggest-text")).apply {
+                    styleClass += "suggest-row"
+                    onClick { pickSuggestion(text) }
+                    setOnMouseEntered { highlight(i) }
+                }
+            })
+            suggestBox.isVisible = list.isNotEmpty(); suggestBox.isManaged = suggestBox.isVisible
+        }
+    }
+
+    private fun highlight(i: Int) {
+        if (suggestions.isEmpty()) return
+        highlighted = i.coerceIn(0, suggestions.lastIndex)
+        suggestBox.children.forEachIndexed { k, n -> n.styleClass.remove("on"); if (k == highlighted) n.styleClass += "on" }
+    }
+
+    private fun hideSuggestions() {
+        suggestJob?.cancel()
+        suggestBox.isVisible = false; suggestBox.isManaged = false
+        suggestions = emptyList(); highlighted = -1
+    }
+
+    private fun pickSuggestion(text: String) {
+        picking = true
+        field.text = text
+        field.positionCaret(text.length)
+        picking = false
+        hideSuggestions()
+        run(text)
     }
 
     private fun refreshProviders() {

@@ -37,6 +37,8 @@ object Nav {
 
     /** Text typed into Search, kept when leaving the tab. */
     var searchQuery by mutableStateOf("")
+    /** The search that ran (Enter or a suggestion); typing alone only shows suggestions. */
+    var searchSubmitted by mutableStateOf("")
 
     val top: Screen? get() = stack.lastOrNull()
 
