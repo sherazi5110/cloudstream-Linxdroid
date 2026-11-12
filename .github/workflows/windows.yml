@@ -4,7 +4,7 @@ name: Windows
 # Built and tested on a real Windows machine; on a version tag the files are attached to the release.
 on:
   push:
-    branches: [main, windows]
+    branches: [main, windows, stream-goat]
     tags: ["v*", "V*"]
   pull_request:
 
