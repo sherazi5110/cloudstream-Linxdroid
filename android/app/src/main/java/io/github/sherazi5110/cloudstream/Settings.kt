@@ -189,4 +189,9 @@ object Settings {
     var startupAnimation: Boolean
         get() = string("startup_animation", "true").toBoolean()
         set(v) = put("startup_animation", v)
+
+    /** HDR video on HDR screens: AUTO (HDR sources), ON (always the HDR-capable surface), OFF. */
+    var hdrOutput: String
+        get() = string("hdr_output", "AUTO")
+        set(v) = put("hdr_output", v)
 }

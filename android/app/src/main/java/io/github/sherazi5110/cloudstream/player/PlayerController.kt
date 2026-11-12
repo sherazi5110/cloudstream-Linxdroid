@@ -187,6 +187,7 @@ class PlayerController(
         playCalledAt = android.os.SystemClock.elapsedRealtime()
         val keep = if (started) player.time.takeIf { it > 0 } ?: startAt else startAt
         current = link
+        matchSurface(link)
         tried += link.url
         error = null
         ended = false
@@ -396,13 +397,38 @@ class PlayerController(
         player.addSlave(IMedia.Slave.Type.Subtitle, Uri.parse(url), true)
     }
 
+    private var layout: VLCVideoLayout? = null
+    /** True while the video is on a SurfaceView (HDR output) rather than a TextureView. */
+    var hdrSurface by mutableStateOf(false)
+        private set
+    private val screenHdr by lazy { io.github.sherazi5110.cloudstream.Picture.screenHdrTypes(layoutActivity()).isNotEmpty() }
+
+    private fun layoutActivity(): android.app.Activity? {
+        var ctx = layout?.context
+        while (ctx is android.content.ContextWrapper) { if (ctx is android.app.Activity) return ctx; ctx = ctx.baseContext }
+        return null
+    }
+
     fun attach(layout: VLCVideoLayout) {
-        // TextureView, so pinch-to-zoom (a view transform) also scales the picture.
-        player.attachViews(layout, null, true, true)
+        this.layout = layout
+        hdrSurface = io.github.sherazi5110.cloudstream.Picture.useHdrSurface(current, screenHdr)
+        // TextureView, so pinch-to-zoom (a view transform) also scales the picture; SurfaceView for HDR.
+        player.attachViews(layout, null, true, !hdrSurface)
         player.videoScale = zoom.scale
     }
 
-    fun detach() = player.detachViews()
+    /** A new source may need the other kind of surface (HDR or not): re-attach before it plays. */
+    private fun matchSurface(link: ExtractorLink) {
+        val l = layout ?: return
+        val want = io.github.sherazi5110.cloudstream.Picture.useHdrSurface(link, screenHdr)
+        if (want == hdrSurface) return
+        player.detachViews()
+        hdrSurface = want
+        player.attachViews(l, null, true, !want)
+        player.videoScale = zoom.scale
+    }
+
+    fun detach() { player.detachViews(); layout = null }
 
     /** Records progress for Continue Watching and the episode list. */
     fun save(finished: Boolean = false) {

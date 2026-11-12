@@ -9,6 +9,7 @@ import com.lagradost.cloudstream3.linux.AppDirs
 import com.lagradost.cloudstream3.linux.Engine
 import com.lagradost.cloudstream3.linux.Library
 import com.lagradost.cloudstream3.linux.OnlineSubtitles
+import com.lagradost.cloudstream3.linux.Picture
 import com.lagradost.cloudstream3.linux.Playable
 import com.lagradost.cloudstream3.linux.Settings
 import com.lagradost.cloudstream3.linux.SubtitleTranslator
@@ -173,7 +174,7 @@ class BuiltinPlayer(
             iconButton(Icons.SUBTITLES, "Subtitles (C)") { showSubtitles() },
             iconButton(Icons.LANGUAGE, "Audio language (A)") { showAudio() },
             iconButton(Icons.SPEED, "Speed") { showSpeed() },
-            iconButton(Icons.ASPECT, "Zoom (Z)") { showZoom() },
+            iconButton(Icons.ASPECT, "Picture: zoom, anime enhance, HDR (Z)") { showZoom() },
             iconButton(Icons.CAMERA, "Screenshot (Shift+S)") { screenshot() },
             iconButton(Icons.FULLSCREEN, "Full screen (F)") { toggleFullscreen() },
         )
@@ -216,6 +217,10 @@ class BuiltinPlayer(
     }
 
     private var openedAt = 0L
+    /** Picture menu choices for this playback (null: follow Settings). */
+    private var enhanceOverride: Boolean? = null
+    private var hdrOverride: Boolean? = null
+    private var enhancing = false
 
     private fun open(link: ExtractorLink, startAt: Long?) {
         openedAt = System.currentTimeMillis()
@@ -225,6 +230,9 @@ class BuiltinPlayer(
         sourceChip.text = if (quality.isBlank() || link.name.contains(quality, true)) link.name else "${link.name} · $quality"
         val (url, options) = mrl(link)
         val opts = options.toMutableList()
+        enhancing = enhanceOverride ?: Picture.enhance(response, link)
+        video.upscale = enhancing
+        video.hdrFix = hdrOverride ?: Picture.hdrFix(link)
         // Seeking with :start-time works for files and HLS alike, before the first frame.
         startAt?.takeIf { it > 1000 }?.let { opts += ":start-time=${it / 1000.0}" }
         addedSubtitles.clear()
@@ -538,9 +546,23 @@ class BuiltinPlayer(
     }
 
     private fun showZoom() {
-        menu.open("zoom", "Zoom", Zoom.entries.map { z ->
+        val items = Zoom.entries.map { z ->
             PlayerMenu.Item(z.label, active = video.zoom == z) { setZoom(z); menu.close() }
-        })
+        } + listOf(
+            PlayerMenu.Item("Anime enhance", hint = if (enhancing) "on: crisper lines when upscaling" else "off", active = enhancing, keepOpen = true) {
+                enhanceOverride = !enhancing
+                flash(if (!enhancing) "Anime enhance on" else "Anime enhance off")
+                open(current, startAt = position.takeIf { it > 1000 })
+                showZoom()
+            },
+            PlayerMenu.Item("HDR colour fix", hint = if (video.hdrFix) "on" else if (Picture.looksHdr(current)) "off (source is HDR)" else "off", active = video.hdrFix, keepOpen = true) {
+                hdrOverride = !video.hdrFix
+                video.hdrFix = !video.hdrFix
+                flash(if (video.hdrFix) "HDR colour fix on" else "HDR colour fix off")
+                showZoom()
+            },
+        )
+        menu.open("zoom", "Picture", items)
     }
 
     private fun setZoom(z: Zoom) {

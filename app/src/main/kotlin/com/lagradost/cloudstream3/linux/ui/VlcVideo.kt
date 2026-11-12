@@ -86,6 +86,8 @@ object Vlc {
                 add("--no-xlib")                   // frames go to callbacks; never touch X11 from VLC
                 add("--avcodec-hw=any")            // VAAPI/VDPAU when available, software otherwise
                 addAll(subtitleArgs())
+                // Lanczos for scaling (sharper lines when anime enhance upscales; bicubic otherwise).
+                if (Settings.animeEnhance != "OFF" && !Settings.batterySaver) add("--swscale-mode=9")
                 if (Settings.batterySaver) {
                     add("--avcodec-skiploopfilter=4")  // skip H.264 deblocking: much less CPU
                     add("--avcodec-fast")
@@ -125,6 +127,16 @@ class VideoView : Region() {
 
     var zoom: Zoom = Zoom.FIT
         set(v) { field = v; requestLayout() }
+
+    /** Anime enhance: VLC upscales small video to the screen (Lanczos) instead of JavaFX stretching it. Set before playing. */
+    @Volatile var upscale = false
+
+    /** HDR shown as SDR looks grey: more contrast and saturation, a little darker. */
+    var hdrFix = false
+        set(v) {
+            field = v
+            image.effect = if (v) javafx.scene.effect.ColorAdjust(0.0, 0.32, -0.04, 0.28) else null
+        }
 
     init {
         style = "-fx-background-color: black;"
@@ -190,8 +202,10 @@ class VideoView : Region() {
         val screens = runCatching { Screen.getScreens() }.getOrNull().orEmpty()
         val maxW = screens.maxOfOrNull { it.bounds.width * it.outputScaleX } ?: 1920.0
         val maxH = screens.maxOfOrNull { it.bounds.height * it.outputScaleY } ?: 1080.0
-        val scale = min(1.0, min(maxW / w, maxH / h))
-        if (scale >= 1.0) return w to h
+        val fit = min(maxW / w, maxH / h)
+        // Anime enhance: VLC scales small video all the way to the screen (Lanczos), so nothing is stretched after.
+        val scale = if (upscale && fit > 1.15) fit else min(1.0, fit)
+        if (scale == 1.0) return w to h
         // Even sizes keep VLC's chroma converter happy.
         return ((w * scale).roundToInt() and 1.inv()).coerceAtLeast(2) to ((h * scale).roundToInt() and 1.inv()).coerceAtLeast(2)
     }

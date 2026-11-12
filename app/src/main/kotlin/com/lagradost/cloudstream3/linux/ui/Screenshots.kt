@@ -34,6 +34,11 @@ object Screenshots {
 
     suspend fun runIfRequested(window: AppWindow) {
         val prefix = System.getenv("CS_SCREENSHOT") ?: return
+        // CS_SCREENSHOT_ONLY=ready: how long startup took (process start → home screen ready), then quit.
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "ready") {
+            println("startup: ready after ${System.currentTimeMillis() - java.lang.management.ManagementFactory.getRuntimeMXBean().startTime} ms")
+            System.exit(0)
+        }
         delay(1500)
         // CS_SCREENSHOT_ONLY=v6: just the profiles / sections / add-on part (quicker while developing).
         if (System.getenv("CS_SCREENSHOT_ONLY") == "glass") {
