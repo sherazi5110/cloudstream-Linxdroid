@@ -109,7 +109,9 @@ object Screenshots {
         if (query != null) {
             window.show(Tab.SEARCH)
             delay(500)
-            (window.scene.root.lookupAll(".search-field").firstOrNull() as? javafx.scene.control.TextField)?.text = query
+            // Typing shows suggestions; Enter searches.
+            (window.scene.root.lookupAll(".search-field").firstOrNull() as? javafx.scene.control.TextField)
+                ?.let { it.text = query; it.fireEvent(javafx.event.ActionEvent()) }
             delay(3000)
             capture(window, "$prefix-search-results.png")
             var hit: Pair<MainAPI, SearchResponse>? = null
