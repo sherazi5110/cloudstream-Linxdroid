@@ -1,6 +1,6 @@
 name: Windows
 
-# The Windows app: CloudStream.exe with its own Java runtime and VLC, as a portable .zip and an .msi installer.
+# The Windows app: Stream Goat.exe with its own Java runtime and VLC, as a portable .zip and an .msi installer.
 # Built and tested on a real Windows machine; on a version tag the files are attached to the release.
 on:
   push:
@@ -80,15 +80,15 @@ jobs:
           ./gradlew :app:packageWindows -PvlcDir="$VLC_DIR" -PjpackageType=msi
           VERSION=$(grep -o 'VERSION = "[^"]*"' app/src/main/kotlin/com/lagradost/cloudstream3/linux/ui/AppWindow.kt | cut -d'"' -f2)
           mkdir -p build/windows
-          (cd app/build/jpackage-win && 7z a -tzip -bd -mx=7 "../../../build/windows/cloudstream-windows-$VERSION-portable.zip" CloudStream > /dev/null)
-          cp app/build/jpackage-win/CloudStream-*.msi "build/windows/cloudstream-windows-$VERSION.msi"
+          (cd app/build/jpackage-win && 7z a -tzip -bd -mx=7 "../../../build/windows/streamgoat-windows-$VERSION-portable.zip" "Stream Goat" > /dev/null)
+          cp app/build/jpackage-win/Stream\ Goat-*.msi "build/windows/streamgoat-windows-$VERSION.msi"
           ls -la build/windows
 
       - name: Check the packaged app
         # The packaged app's own checker must find its Java, extensions folder and the bundled VLC.
         run: |
-          app=app/build/jpackage-win/CloudStream
-          out=$(CLOUDSTREAM_HOME="$(cygpath -w "$PWD/doctor-home")" "$app/cloudstream-cli.exe" doctor 2>&1 || true)
+          app="app/build/jpackage-win/Stream Goat"
+          out=$(CLOUDSTREAM_HOME="$(cygpath -w "$PWD/doctor-home")" "$app/streamgoat-cli.exe" doctor 2>&1 || true)
           echo "$out"
           ls "$app/app/vlc" | head
           if ! echo "$out" | grep -q "libVLC    3\."; then
@@ -98,11 +98,11 @@ jobs:
           fi
 
       - name: Screenshots of the app window
-        # Starts CloudStream.exe in screenshot mode (the same tour as on Linux); the pictures are in the artifact.
+        # Starts Stream Goat.exe in screenshot mode (the same tour as on Linux); the pictures are in the artifact.
         run: |
           mkdir -p shots
           export CS_SCREENSHOT="$(cygpath -w "$PWD/shots")\\win" CS_SCREENSHOT_ONLY=settings7 CLOUDSTREAM_HOME="$(cygpath -w "$PWD/shot-home")"
-          timeout 180 app/build/jpackage-win/CloudStream/CloudStream.exe || true
+          timeout 180 "app/build/jpackage-win/Stream Goat/Stream Goat.exe" || true
           ls shots
           [ -n "$(ls shots)" ] || { echo "::error::No screenshots were taken"; exit 1; }
           # A drawn window has many colours and the app's dark background; a blank one doesn't.
@@ -121,7 +121,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cloudstream-windows
+          name: streamgoat-windows
           path: |
             build/windows/*.zip
             build/windows/*.msi

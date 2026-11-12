@@ -38,7 +38,7 @@ jobs:
         run: |
           ./scripts/build-deb.sh
           ./gradlew :app:distTar
-          mv app/build/distributions/cloudstream-linux.tar "app/build/distributions/cloudstream-linux-${GITHUB_REF_NAME//\//-}.tar"
+          mv app/build/distributions/cloudstream-linux.tar "app/build/distributions/streamgoat-linux-${GITHUB_REF_NAME//\//-}.tar"
           # The self-contained app image, for the Flatpak job (a tar keeps file permissions).
           tar -C app/build/jpackage -cf build/cloudstream-linux-app.tar cloudstream-linux
 
@@ -50,7 +50,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cloudstream-linux
+          name: streamgoat-linux
           path: |
             build/*.deb
             app/build/distributions/*.tar
@@ -59,7 +59,7 @@ jobs:
         # Install instructions for every file (.github/release-install.md) above GitHub's generated changes.
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          VERSION=$(ls build/*.deb | sed -E 's/.*cloudstream-linux_(.+)_amd64\.deb/\1/')
+          VERSION=$(ls build/*.deb | sed -E 's/.*streamgoat-linux_(.+)_amd64\.deb/\1/')
           # What's new (docs/releases/<version>.md, when there is one) goes first.
           : > build/release-notes.md
           if [ -f "docs/releases/${VERSION}.md" ]; then cat "docs/releases/${VERSION}.md" >> build/release-notes.md; echo >> build/release-notes.md; fi
@@ -121,13 +121,13 @@ jobs:
           mkdir -p ../build/apk
           for f in app/build/outputs/apk/release/app-*-release.apk; do
             abi=$(basename "$f" | sed -E 's/app-(.+)-release\.apk/\1/')
-            cp "$f" "../build/apk/cloudstream-android-$abi.apk"
+            cp "$f" "../build/apk/streamgoat-android-$abi.apk"
           done
           ls -la ../build/apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: cloudstream-android
+          name: streamgoat-android
           path: build/apk/*.apk
 
       - name: Publish release
@@ -156,11 +156,11 @@ jobs:
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           manifest-path: packaging/flatpak/io.github.sherazi5110.CloudStreamLinux.yml
-          bundle: cloudstream-linux.flatpak
+          bundle: streamgoat-linux.flatpak
           cache-key: flatpak-builder-${{ hashFiles('packaging/flatpak/*.yml') }}
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: cloudstream-linux.flatpak
+          files: streamgoat-linux.flatpak

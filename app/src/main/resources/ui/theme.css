@@ -805,3 +805,9 @@
 .dl-badge.failed { -fx-background-color: -cs-bad; }
 .dl-badge-text { -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; }
 .bad { -fx-text-fill: -cs-bad; }
+
+.about-credit { -fx-text-fill: -cs-accent; -fx-font-size: 15px; -fx-font-weight: bold; }
+
+/* ---------- intro ---------- */
+.intro-title { -fx-font-size: 44px; -fx-font-weight: bold; -fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 18, 0.2, 0, 2); }
+.intro-credit { -fx-font-size: 14px; -fx-text-fill: rgba(255,255,255,0.78); -fx-font-weight: bold; }

@@ -48,7 +48,7 @@ object Backup {
     /** Replaces the settings stores found in [json]. Returns how many stores were restored. */
     fun import(json: String): Int {
         val root = JSONObject(json)
-        require(root.optString("format") == FORMAT) { "This isn't a CloudStream backup file" }
+        require(root.optString("format") == FORMAT) { "This isn't a Stream Goat backup file" }
         val stores = root.getJSONObject("stores")
         var n = 0
         for (name in stores.keys()) {

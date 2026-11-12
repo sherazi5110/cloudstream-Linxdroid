@@ -2,37 +2,37 @@
 
 | Your device | Download |
 |---|---|
-| **Windows 10 or 11** | `cloudstream-windows-{{VERSION}}.msi` (installer) or `cloudstream-windows-{{VERSION}}-portable.zip` |
-| **Ubuntu, Debian, Mint, Pop!_OS, Zorin, ChromeOS (Linux)** | `cloudstream-linux_{{VERSION}}_amd64.deb` |
-| **Any Linux with Flatpak** (Fedora, Arch, openSUSE, Steam Deck…) | `cloudstream-linux.flatpak` |
-| **Linux with Java 21 already installed** | `cloudstream-linux-{{TAG}}.tar` |
-| **Android phone or tablet** | `cloudstream-android-arm64-v8a.apk` |
-| **Android TV, Google TV, Fire TV Stick, TV box** | `cloudstream-android-armeabi-v7a.apk` |
-| **Android, not sure which** | `cloudstream-android-universal.apk` (larger, runs on any device) |
+| **Windows 10 or 11** | `streamgoat-windows-{{VERSION}}.msi` (installer) or `streamgoat-windows-{{VERSION}}-portable.zip` |
+| **Ubuntu, Debian, Mint, Pop!_OS, Zorin, ChromeOS (Linux)** | `streamgoat-linux_{{VERSION}}_amd64.deb` |
+| **Any Linux with Flatpak** (Fedora, Arch, openSUSE, Steam Deck…) | `streamgoat-linux.flatpak` |
+| **Linux with Java 21 already installed** | `streamgoat-linux-{{TAG}}.tar` |
+| **Android phone or tablet** | `streamgoat-android-arm64-v8a.apk` |
+| **Android TV, Google TV, Fire TV Stick, TV box** | `streamgoat-android-armeabi-v7a.apk` |
+| **Android, not sure which** | `streamgoat-android-universal.apk` (larger, runs on any device) |
 
 <details>
 <summary><b>Install on Windows</b> (.msi or portable .zip; includes VLC)</summary>
 
-1. Download `cloudstream-windows-{{VERSION}}.msi` and open it. It installs for your user only (no admin password) and
-   adds CloudStream to the Start menu and the desktop.
+1. Download `streamgoat-windows-{{VERSION}}.msi` and open it. It installs for your user only (no admin password) and
+   adds Stream Goat to the Start menu and the desktop.
 2. Windows may say **"Windows protected your PC"** because the installer isn't signed yet: click **More info → Run anyway**.
-3. Open **CloudStream** and add your repositories under Extensions.
+3. Open **Stream Goat** and add your repositories under Extensions.
 
-**Portable instead:** unzip `cloudstream-windows-{{VERSION}}-portable.zip` anywhere and run `CloudStream\CloudStream.exe`.
+**Portable instead:** unzip `streamgoat-windows-{{VERSION}}-portable.zip` anywhere and run `Stream Goat\Stream Goat.exe`.
 
-To update, install the new `.msi` the same way (extensions, profiles and library are kept in `%APPDATA%\CloudStream`).
-To remove: Settings → Apps → CloudStream → Uninstall.
+To update, install the new `.msi` the same way (extensions, profiles and library are kept in `%APPDATA%\Stream Goat`).
+To remove: Settings → Apps → Stream Goat → Uninstall.
 </details>
 
 <details>
 <summary><b>Install the .deb</b> (Ubuntu, Debian, Mint, ChromeOS)</summary>
 
 ```bash
-wget -O /tmp/cloudstream-linux.deb https://github.com/sherazi5110/cloudstream-Linxdroid/releases/download/{{TAG}}/cloudstream-linux_{{VERSION}}_amd64.deb
+wget -O /tmp/cloudstream-linux.deb https://github.com/sherazi5110/cloudstream-Linxdroid/releases/download/{{TAG}}/streamgoat-linux_{{VERSION}}_amd64.deb
 sudo apt install /tmp/cloudstream-linux.deb
 ```
-Or, after downloading it in the browser: `cd ~/Downloads && sudo apt install ./cloudstream-linux_{{VERSION}}_amd64.deb`
-(keep the `./`). apt also installs VLC's libraries. Open **CloudStream** from the app menu.
+Or, after downloading it in the browser: `cd ~/Downloads && sudo apt install ./streamgoat-linux_{{VERSION}}_amd64.deb`
+(keep the `./`). apt also installs VLC's libraries. Open **Stream Goat** from the app menu.
 
 To update, install the new `.deb` the same way (your extensions and settings are kept).
 To remove: `sudo apt remove cloudstream-linux`.
@@ -43,8 +43,8 @@ To remove: `sudo apt remove cloudstream-linux`.
 
 ```bash
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-wget -O /tmp/cloudstream-linux.flatpak https://github.com/sherazi5110/cloudstream-Linxdroid/releases/download/{{TAG}}/cloudstream-linux.flatpak
-flatpak install --user /tmp/cloudstream-linux.flatpak
+wget -O /tmp/streamgoat-linux.flatpak https://github.com/sherazi5110/cloudstream-Linxdroid/releases/download/{{TAG}}/streamgoat-linux.flatpak
+flatpak install --user /tmp/streamgoat-linux.flatpak
 flatpak run io.github.sherazi5110.CloudStreamLinux
 ```
 To update, install the new file the same way. To remove: `flatpak uninstall --user io.github.sherazi5110.CloudStreamLinux`.
@@ -55,7 +55,7 @@ To update, install the new file the same way. To remove: `flatpak uninstall --us
 
 ```bash
 sudo apt install openjdk-21-jre libvlc5 vlc-plugin-base   # or your distro's packages
-tar -xf cloudstream-linux-{{TAG}}.tar
+tar -xf streamgoat-linux-{{TAG}}.tar
 ./cloudstream-linux/bin/cloudstream-linux
 ```
 </details>
@@ -65,7 +65,7 @@ tar -xf cloudstream-linux-{{TAG}}.tar
 
 1. Download the `.apk` on the phone (tap it in the list below).
 2. Open it; when Android asks, allow **Install unknown apps** for your browser, then tap **Install**.
-3. Open **CloudStream** → **More → Extensions** and add your repositories.
+3. Open **Stream Goat** → **More → Extensions** and add your repositories.
 
 It installs next to the official CloudStream app. "App not installed" means the file doesn't match the device:
 use the universal one.
@@ -78,10 +78,10 @@ use the universal one.
 2. Allow it to install apps: **Fire TV:** Settings → My Fire TV → Developer options → Install unknown apps.
    **Android/Google TV:** Settings → Apps → Security & restrictions → Unknown sources.
 3. In Downloader, enter
-   `https://github.com/sherazi5110/cloudstream-Linxdroid/releases/download/{{TAG}}/cloudstream-android-armeabi-v7a.apk`
+   `https://github.com/sherazi5110/cloudstream-Linxdroid/releases/download/{{TAG}}/streamgoat-android-armeabi-v7a.apk`
    (or the `arm64-v8a` one for newer TVs) and choose **Install**.
 
-Or copy the `.apk` to a USB stick and open it with a file manager on the TV, or: `adb install -r cloudstream-android-armeabi-v7a.apk`.
+Or copy the `.apk` to a USB stick and open it with a file manager on the TV, or: `adb install -r streamgoat-android-armeabi-v7a.apk`.
 </details>
 
 Full guide, other distros and troubleshooting: [INSTALL.md](https://github.com/sherazi5110/cloudstream-Linxdroid/blob/main/INSTALL.md).

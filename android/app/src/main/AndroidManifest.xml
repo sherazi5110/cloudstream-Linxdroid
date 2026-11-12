@@ -18,7 +18,7 @@
         android:allowBackup="true"
         android:banner="@drawable/tv_banner"
         android:icon="@mipmap/ic_launcher"
-        android:label="CloudStream"
+        android:label="Stream Goat"
         android:largeHeap="true"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"

@@ -203,7 +203,9 @@ class SettingsPage : StackPane(), Refreshable {
                     button(if (Profiles.hasParentPin) "Change PIN" else "Set PIN", Icons.LOCK, "btn-ghost", "btn-small") { changeParentPin() })),
             section("Startup",
                 row("Ask who's watching", "With more than one profile, show the profile picker when the app starts. It always shows when the last profile has a PIN.",
-                    Switch(Profiles.askOnStart) { Profiles.askOnStart = it })),
+                    Switch(Profiles.askOnStart) { Profiles.askOnStart = it }),
+                row("Startup animation", "The short Stream Goat intro when the app opens (a click or key skips it).",
+                    Switch(Settings.startupAnimation) { Settings.startupAnimation = it })),
             section("What belongs to a profile", label(
                 "Each profile has its own history, continue watching, list, home layout, theme and player preferences (subtitles, audio, volume). " +
                     "Extensions, Stremio add-ons, network and storage settings are shared by everyone.", "muted").apply { isWrapText = true; pad(10.0, 0.0) }),
@@ -912,10 +914,12 @@ class SettingsPage : StackPane(), Refreshable {
     }
 
     private fun about(): List<Node> = listOf(
+        vbox(10.0, Logo(96.0), label(AppInfo.NAME, "h1"), label("Created by ${AppInfo.CREDIT}", "about-credit"),
+            label("Version ${AppInfo.VERSION} for ${com.lagradost.cloudstream3.linux.Os.name}", "muted")).apply { alignment = javafx.geometry.Pos.CENTER_LEFT; pad(4.0, 0.0, 10.0, 0.0) },
         section(AppInfo.NAME,
-            row("Version ${AppInfo.VERSION}", "Runs CloudStream extensions from the same repositories as the Android app. Free software under GPL-3.0.",
+            row("Version ${AppInfo.VERSION}", "Movies, series, anime and Live TV from CloudStream extensions and Stremio add-ons, on Linux, Windows and Android. Free software under GPL-3.0.",
                 label("v${AppInfo.VERSION}", "tag", "accent")),
-            row("Made by", AppInfo.CREDIT, label("", "muted")),
+            row("Created by", AppInfo.CREDIT, label("", "muted")),
             row("Built on", "The upstream CloudStream library, libVLC through vlcj (player), JavaFX. Online subtitles: OpenSubtitles via the Stremio addon protocol.", label("", "muted")),
         ),
         section("Updates",
@@ -966,7 +970,7 @@ class SettingsPage : StackPane(), Refreshable {
             Triple("Player", "G  /  H", "Subtitles earlier / later"),
             Triple("Player", "0 – 9", "Jump to 0 % – 90 %"),
             Triple("Player", "Home", "Back to the start"),
-            Triple("Player", "Shift + S", "Screenshot to Pictures/CloudStream"),
+            Triple("Player", "Shift + S", "Screenshot to Pictures/Stream Goat"),
             Triple("Player", "N", "Next episode"),
         )
         val list = VBox()

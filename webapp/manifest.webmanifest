@@ -1,6 +1,6 @@
 {
-  "name": "CloudStream",
-  "short_name": "CloudStream",
+  "name": "Stream Goat",
+  "short_name": "Stream Goat",
   "start_url": "./#/home",
   "scope": "./",
   "display": "standalone",

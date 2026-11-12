@@ -93,7 +93,7 @@ val packageDeb by tasks.registering(Exec::class) {
         addAll(listOf("--main-class", application.mainClass.get(), "--dest", out.get().asFile.path))
         addAll(listOf("--resource-dir", resources.get().asFile.path))
         addAll(listOf("--icon", packaging.resolve("cloudstream-linux.png").path))
-        addAll(listOf("--description", "Run CloudStream extensions on Linux"))
+        addAll(listOf("--description", "Stream Goat: movies, series, anime and Live TV from CloudStream extensions"))
         addAll(listOf("--jlink-options", "--strip-debug --no-man-pages --no-header-files --strip-native-commands"))
         // Android gives extensions roughly java.base; the rest is for Swing, TLS, Jackson, Rhino and okhttp.
         addAll(listOf("--add-modules", listOf(
@@ -110,10 +110,10 @@ val packageDeb by tasks.registering(Exec::class) {
     })
 }
 
-// Windows: the app image (CloudStream\CloudStream.exe with its own Java runtime and VLC) and the .msi installer,
+// Windows: the app image (Stream Goat\Stream Goat.exe with its own Java runtime and VLC) and the .msi installer,
 // built with the JDK's jpackage on Windows (CI: the "windows" job in .github/workflows/build.yml).
-//   ./gradlew :app:packageWindows -PvlcDir=C:\path\to\vlc                 -> build\jpackage-win\CloudStream\
-//   ./gradlew :app:packageWindows -PvlcDir=... -PjpackageType=msi          -> build\jpackage-win\CloudStream-<v>.msi
+//   ./gradlew :app:packageWindows -PvlcDir=C:\path\to\vlc                 -> build\jpackage-win\Stream Goat\
+//   ./gradlew :app:packageWindows -PvlcDir=... -PjpackageType=msi          -> build\jpackage-win\Stream Goat-<v>.msi
 val packageWindows by tasks.registering(Exec::class) {
     group = "distribution"
     dependsOn(tasks.installDist)
@@ -131,14 +131,14 @@ val packageWindows by tasks.registering(Exec::class) {
         if (type == "app-image") out.get().asFile.deleteRecursively()
     }
     commandLine(buildList {
-        addAll(listOf("jpackage", "--type", type, "--name", "CloudStream", "--app-version", version))
-        addAll(listOf("--vendor", "CloudStream for Linux, Android and Windows", "--dest", out.get().asFile.path))
-        addAll(listOf("--description", "Run CloudStream extensions on Windows"))
+        addAll(listOf("jpackage", "--type", type, "--name", "Stream Goat", "--app-version", version))
+        addAll(listOf("--vendor", "Syed Ali Hamza", "--dest", out.get().asFile.path))
+        addAll(listOf("--description", "Stream Goat: movies, series, anime and Live TV from CloudStream extensions"))
         if (type == "app-image") {
             addAll(listOf("--input", input.get().asFile.path, "--main-jar", "app.jar", "--main-class", application.mainClass.get()))
             addAll(listOf("--icon", rootProject.file("packaging/windows/cloudstream.ico").path))
-            // A second launcher with a console window for the command line (cloudstream-cli.exe doctor, install…).
-            addAll(listOf("--add-launcher", "cloudstream-cli=" + rootProject.file("packaging/windows/cli-launcher.properties").path))
+            // A second launcher with a console window for the command line (streamgoat-cli.exe doctor, install…).
+            addAll(listOf("--add-launcher", "streamgoat-cli=" + rootProject.file("packaging/windows/cli-launcher.properties").path))
             addAll(listOf("--jlink-options", "--strip-debug --no-man-pages --no-header-files --strip-native-commands"))
             addAll(listOf("--add-modules", listOf(
                 "java.base", "java.desktop", "java.logging", "java.management", "java.naming", "java.net.http",
@@ -149,8 +149,8 @@ val packageWindows by tasks.registering(Exec::class) {
         } else {
             // The installer wraps the app image built first: per-user (no admin prompt), Start menu and desktop
             // shortcuts, upgrades in place (the upgrade code never changes).
-            addAll(listOf("--app-image", out.get().asFile.resolve("CloudStream").path))
-            addAll(listOf("--win-per-user-install", "--win-menu", "--win-menu-group", "CloudStream", "--win-shortcut"))
+            addAll(listOf("--app-image", out.get().asFile.resolve("Stream Goat").path))
+            addAll(listOf("--win-per-user-install", "--win-menu", "--win-menu-group", "Stream Goat", "--win-shortcut"))
             addAll(listOf("--win-upgrade-uuid", "6f1c2b9e-4d1a-4c2e-9a57-3e5b8d0c7a41"))
             addAll(listOf("--about-url", "https://github.com/sherazi5110/cloudstream-Linxdroid"))
         }

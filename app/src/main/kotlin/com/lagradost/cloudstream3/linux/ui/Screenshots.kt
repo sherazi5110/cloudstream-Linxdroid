@@ -22,6 +22,16 @@ import javax.imageio.ImageIO
  * player is part of the JavaFX scene, so ordinary snapshots include the video.
  */
 object Screenshots {
+    /** CS_SCREENSHOT_ONLY=intro: frames of the startup animation, then quits. */
+    fun captureIntro(window: AppWindow) {
+        val prefix = System.getenv("CS_SCREENSHOT") ?: return
+        listOf(400, 1000, 1500, 2100, 3000).forEach { ms ->
+            javafx.animation.PauseTransition(javafx.util.Duration.millis(ms.toDouble())).apply {
+                setOnFinished { capture(window, "$prefix-intro-$ms.png"); if (ms == 3000) System.exit(0) }
+            }.play()
+        }
+    }
+
     suspend fun runIfRequested(window: AppWindow) {
         val prefix = System.getenv("CS_SCREENSHOT") ?: return
         delay(1500)

@@ -39,9 +39,9 @@ import java.util.logging.Logger
 import kotlin.system.exitProcess
 
 object AppInfo {
-    val NAME = "CloudStream for " + com.lagradost.cloudstream3.linux.Os.name
+    const val NAME = "Stream Goat"
     const val VERSION = "7.1.0"
-    const val CREDIT = "Tennant Creek"
+    const val CREDIT = "Syed Ali Hamza"
 }
 
 class DesktopApp : Application() {
@@ -54,7 +54,7 @@ class DesktopApp : Application() {
         val window = AppWindow(stage)
         val scene = Scene(window, 1366.0, 840.0, Color.web(Theme.background))
         scene.stylesheets += DesktopApp::class.java.getResource("/ui/theme.css")!!.toExternalForm()
-        stage.title = "CloudStream"
+        stage.title = AppInfo.NAME
         // The window icon is the logo in the current theme colour.
         stage.icons.setAll(Logo.image(256.0))
         Theme.onChange { stage.icons.setAll(Logo.image(256.0)) }
@@ -143,7 +143,9 @@ class AppWindow(val stage: Stage) : StackPane() {
         Toasts.host = toastHost
         StackPane.setAlignment(statusPill, Pos.TOP_RIGHT)
         StackPane.setMargin(statusPill, Insets(16.0, 22.0, 0.0, 0.0))
-        splash = SplashScreen()
+        // The intro plays unless it's turned off; screenshot tours skip it (except the "intro" tour).
+        splash = SplashScreen(Settings.startupAnimation &&
+            (System.getenv("CS_SCREENSHOT") == null || System.getenv("CS_SCREENSHOT_ONLY") == "intro"))
         children.addAll(wallpaper, layout, statusPill, overlay, toastHost, playerLayer, splash)
 
         applyTheme()
@@ -354,6 +356,14 @@ class AppWindow(val stage: Stage) : StackPane() {
                     Toasts.show("${failures.size} extension(s) failed to load", "Details" to { show(Tab.EXTENSIONS) }, 6.0)
                 }
             }
+            if (System.getenv("CS_SCREENSHOT_ONLY") == "intro") Screenshots.captureIntro(this@AppWindow)
+            // The app opens when the intro has played (or was skipped) and extensions have loaded (at most ~6 s).
+            val intro = splash as? SplashScreen
+            if (intro != null && !intro.finished) {
+                val done = kotlinx.coroutines.CompletableDeferred<Unit>()
+                intro.whenFinished { done.complete(Unit) }
+                done.await()
+            }
             while (loading.isActive && System.currentTimeMillis() - shownAt < 6000) delay(50)
             delay((1100 - (System.currentTimeMillis() - shownAt)).coerceAtLeast(0))
             // With a PIN on the last-used profile the picker always comes up, so a restart can't skip the PIN.
@@ -376,7 +386,7 @@ class AppWindow(val stage: Stage) : StackPane() {
                 System.getenv("CS_SCREENSHOT") == null) {
                 Updates.lastCheck = System.currentTimeMillis()
                 runCatching { Updates.check(AppInfo.VERSION) }.getOrNull()?.let { r ->
-                    Toasts.show("CloudStream ${r.version} is available", "Download" to { openUrl(r.url) }, 15.0)
+                    Toasts.show("Stream Goat ${r.version} is available", "Download" to { openUrl(r.url) }, 15.0)
                 }
             }
             Screenshots.runIfRequested(this@AppWindow)
@@ -395,38 +405,6 @@ class AppWindow(val stage: Stage) : StackPane() {
             toValue = 0.0
             setOnFinished { children.remove(node) }
         }.play()
-    }
-}
-
-/** Startup screen shown while extensions load. */
-class SplashScreen : StackPane() {
-    private val statusLabel = label("Starting…", "splash-status")
-
-    init {
-        styleClass += "splash"
-        val logo = Logo(112.0).apply {
-            effect = javafx.scene.effect.DropShadow(40.0, Color.web(Theme.accent, 0.45))
-        }
-        val center = vbox(14.0,
-            logo,
-            label("CloudStream", "splash-title"),
-            label("FOR LINUX", "splash-sub"),
-            Region().apply { minHeight = 14.0 },
-            ProgressIndicator().apply { setPrefSize(30.0, 30.0); setMaxSize(30.0, 30.0) },
-            statusLabel,
-        ).apply { alignment = Pos.CENTER }
-        val credit = hbox(6.0, label("Made by", "muted"), label(AppInfo.CREDIT, "bold")).apply {
-            styleClass += "splash-credit"
-            maxWidth = Region.USE_PREF_SIZE
-            maxHeight = Region.USE_PREF_SIZE
-        }
-        children.addAll(center, credit)
-        StackPane.setAlignment(credit, Pos.BOTTOM_CENTER)
-        StackPane.setMargin(credit, Insets(0.0, 0.0, 34.0, 0.0))
-    }
-
-    fun status(text: String) {
-        statusLabel.text = text
     }
 }
 

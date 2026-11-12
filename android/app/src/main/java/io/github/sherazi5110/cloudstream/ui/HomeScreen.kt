@@ -91,7 +91,7 @@ private fun NoExtensions() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (progress.running) Spinner()
         else EmptyState(
-            "Welcome to CloudStream",
+            "Welcome to Stream Goat",
             "Add a repository and install an extension to fill Home. Extensions are the same ones the official app uses.",
             button = "Add extensions",
         ) { Nav.select(Tab.EXTENSIONS) }

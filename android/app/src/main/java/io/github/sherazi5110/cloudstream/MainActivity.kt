@@ -6,6 +6,8 @@ import android.graphics.Color
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.lagradost.cloudstream3.CommonActivity
 import io.github.sherazi5110.cloudstream.ui.AppRoot
 import io.github.sherazi5110.cloudstream.ui.CloudStreamTheme
@@ -27,7 +29,15 @@ class MainActivity : com.lagradost.cloudstream3.MainActivity() {
         )
         CommonActivity.activity = this
         handle(intent)
-        setContent { CloudStreamTheme { AppRoot() } }
+        // The intro plays once per launch (not after rotation or returning to the app).
+        val playIntro = savedInstanceState == null && Settings.startupAnimation
+        setContent {
+            CloudStreamTheme {
+                var intro by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(playIntro) }
+                AppRoot()
+                if (intro) io.github.sherazi5110.cloudstream.ui.IntroScreen { intro = false }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

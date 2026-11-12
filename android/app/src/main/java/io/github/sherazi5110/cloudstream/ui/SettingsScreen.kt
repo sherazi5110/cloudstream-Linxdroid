@@ -194,6 +194,8 @@ private fun ProfilesSection() {
 
 @Composable
 private fun AppearanceSection() {
+    var intro by remember { mutableStateOf(Settings.startupAnimation) }
+    SwitchRow("Startup animation", "The short Stream Goat intro when the app opens (tap to skip).", intro) { intro = it; Settings.startupAnimation = it }
     Heading("Presets")
     ChoiceChips(ThemePreset.entries, { it.label }, { ThemeState.preset == it }) { ThemeState.apply(it) }
     Heading("Theme")
@@ -367,8 +369,9 @@ private fun AboutSection() {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
         Logo(48.dp)
         Column(Modifier.padding(start = 12.dp)) {
-            Text("CloudStream", style = MaterialTheme.typography.headlineSmall)
+            Text("Stream Goat", style = MaterialTheme.typography.headlineSmall)
             Text("Version ${versionName ?: "?"}", style = MaterialTheme.typography.bodySmall)
+            Text("Created by Syed Ali Hamza", style = MaterialTheme.typography.bodyMedium, color = Palette.accent)
         }
     }
     PillButton("Source code on GitHub", null, primary = false, compact = true) {

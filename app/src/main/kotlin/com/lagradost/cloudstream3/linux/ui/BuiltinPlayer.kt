@@ -600,12 +600,12 @@ class BuiltinPlayer(
 
     /** Saves the current frame to ~/Pictures/CloudStream. */
     private fun screenshot() {
-        val dir = java.io.File(System.getProperty("user.home"), "Pictures/CloudStream").apply { mkdirs() }
+        val dir = java.io.File(System.getProperty("user.home"), "Pictures/Stream Goat").apply { mkdirs() }
         val name = (response.name + if (all.size > 1) " ${playable.label}" else "").replace(Regex("[^\\p{L}\\p{N} ._-]"), "").trim()
         val file = java.io.File(dir, "$name ${format(position).replace(':', '-')}.png")
         Thread({
             val ok = runCatching { player.snapshots().save(file) }.getOrDefault(false)
-            Platform.runLater { flash(if (ok) "Screenshot saved to Pictures/CloudStream" else "Couldn't take a screenshot") }
+            Platform.runLater { flash(if (ok) "Screenshot saved to Pictures/Stream Goat" else "Couldn't take a screenshot") }
         }, "vlc-snapshot").start()
     }
 
