@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -140,7 +141,16 @@ fun ExtensionsScreen() {
                     loaded != null -> listOf("v${loaded.data.version}", loaded.providers.joinToString { it.name }.ifBlank { null }).filterNotNull().joinToString(" · ")
                     else -> "Loading…"
                 }
+                // The extension's own settings (some, like Eclipsia, have a limit per provider, timeouts, which
+                // scrapers to use…), opened like the official app's gear button.
+                val settings = (loaded?.instance as? com.lagradost.cloudstream3.plugins.Plugin)?.openSettings
+                val ctx = LocalContext.current
                 ListRow(data.name ?: data.internalName, detail, null, warning = failure != null) {
+                    if (settings != null) IconAction(Icons.Filled.Settings, "Settings") {
+                        val activity = ctx.findActivity() ?: ctx
+                        runCatching { settings.invoke(activity) }
+                            .onFailure { App.toast("Couldn't open its settings: ${it.message ?: it}") }
+                    }
                     IconAction(Icons.Filled.Delete, "Uninstall") { PluginManager.uninstall(data.internalName); PluginManager.bumpVersion() }
                 }
             }

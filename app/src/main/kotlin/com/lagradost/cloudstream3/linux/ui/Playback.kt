@@ -140,13 +140,10 @@ class LoadingScreen(
             return
         }
         if (!armed) return
-        val newest = sources.links.lastOrNull() ?: return
-        val preferred = Settings.preferredQuality
-        when {
-            sources.finished -> autoPlayNow()
-            preferred > 0 && newest.quality >= preferred -> autoPlayNow()
-            n == 1 && grace.status != javafx.animation.Animation.Status.RUNNING -> grace.playFromStart()
-        }
+        // Like the official app: the best link plays once the extension has found them all ("Play now" starts
+        // at once). Starting with an early, weaker link made extensions that ask many sites at once (Eclipsia)
+        // fail over from link to link.
+        if (sources.finished) autoPlayNow()
     }
 
     private fun errorText(): String {

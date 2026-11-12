@@ -168,16 +168,13 @@ class PlayerController(
     /** Best first: closest to the preferred quality without going over it. */
     fun ranked(): List<ExtractorLink> = Engine.rank(links.toList())
 
-    private fun onNewLink() {
-        if (!autoPlay || current != null) return
-        val preferred = Settings.preferredQuality
-        // A source at the preferred quality starts at once; otherwise wait a few seconds for better ones.
-        ranked().firstOrNull { preferred > 0 && it.quality >= preferred }?.let { play(it); return }
-        if (grace == null) grace = scope.launch {
-            delay(4_000)
-            if (current == null && autoPlay) ranked().firstOrNull()?.let { play(it) }
-        }
-    }
+    /**
+     * Like the official app: while the extension is still finding links nothing starts, so the best of all of
+     * them plays (starting with an early, weaker link made extensions that ask many sites at once, such as
+     * Eclipsia, fail over from link to link). "Play now (N)" on the loading screen starts at once, like the
+     * official "Skip loading (N)"; the search itself ends after Settings → Player → Wait for sources.
+     */
+    private fun onNewLink() = Unit
 
     fun stopAutoPlay() { autoPlay = false; grace?.cancel() }
 
