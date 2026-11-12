@@ -14,7 +14,9 @@ object Logs {
 
     fun init() {
         file.parentFile.mkdirs()
-        if (file.length() > 2_000_000) file.renameTo(File(file.parentFile, "cloudstream.old.log"))
+        if (file.length() > 2_000_000) runCatching {
+            java.nio.file.Files.move(file.toPath(), File(file.parentFile, "cloudstream.old.log").toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        }
         val log = FileOutputStream(file, true)
         val original = System.err
         val tee = object : OutputStream() {

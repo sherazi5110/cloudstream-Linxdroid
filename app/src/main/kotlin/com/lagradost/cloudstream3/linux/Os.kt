@@ -30,6 +30,18 @@ object Os {
         else -> File((System.getenv("XDG_DATA_HOME") ?: "$home/.local/share"), "cloudstream-linux")
     }
 
+    /**
+     * [file], or the "<file>.tmp" saved next to it when that's newer and holds valid JSON: before 7.2.1 the
+     * Windows app couldn't replace a file by renaming onto it, so its latest saves were left in the .tmp file.
+     */
+    fun freshest(file: File): File {
+        val tmp = File(file.path + ".tmp")
+        if (!tmp.isFile || tmp.length() == 0L || (file.exists() && tmp.lastModified() < file.lastModified())) return file
+        val text = runCatching { tmp.readText().trim() }.getOrNull() ?: return file
+        val ok = runCatching { if (text.startsWith("[")) org.json.JSONArray(text) else org.json.JSONObject(text) }.isSuccess
+        return if (ok) tmp else file
+    }
+
     /** The user's Downloads folder (Linux: the XDG download folder, which the Flatpak may write to). */
     fun downloadsDir(): File {
         if (!isWindows) {

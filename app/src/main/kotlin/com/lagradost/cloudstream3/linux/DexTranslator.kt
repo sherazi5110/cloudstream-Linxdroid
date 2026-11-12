@@ -49,7 +49,7 @@ object DexTranslator {
             }
             val tmp = File(cacheDir, "$hash.jar.tmp")
             zipDirectory(classesDir, tmp)
-            tmp.renameTo(out)
+            java.nio.file.Files.move(tmp.toPath(), out.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
         } finally {
             classesDir.deleteRecursively()
         }

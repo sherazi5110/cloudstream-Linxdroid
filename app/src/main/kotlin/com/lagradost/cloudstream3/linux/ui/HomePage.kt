@@ -248,8 +248,24 @@ class HomePage : StackPane(), Refreshable, TopBarActions {
             maxWidth = Region.USE_PREF_SIZE
         }
         private val timer = javafx.animation.Timeline(javafx.animation.KeyFrame(javafx.util.Duration.seconds(9.0), {
-            if (onScreen()) show(index + 1)
+            if (onScreen() && inView()) show(index + 1)
         })).apply { cycleCount = javafx.animation.Animation.INDEFINITE }
+
+        /** Whether some of the banner is visible in the page (not scrolled away). */
+        private fun inView(): Boolean {
+            val b = localToScene(layoutBounds) ?: return false
+            return b.maxY > TopBar.HEIGHT + 20
+        }
+
+        /**
+         * Before a slide is removed: if it has the keyboard focus (e.g. its Play button was clicked), give the
+         * focus to the banner itself. Otherwise JavaFX moves the focus to the next button and the page scrolls
+         * to it, which threw the page back to the top every few seconds while scrolling.
+         */
+        private fun keepFocus() {
+            val owner = scene?.focusOwner ?: return
+            if (generateSequence(owner) { it.parent }.any { it === slides }) requestFocus()
+        }
         private val loads = mutableListOf<Job>()
 
         init {
@@ -288,11 +304,11 @@ class HomePage : StackPane(), Refreshable, TopBarActions {
                 val r = runCatching { kotlinx.coroutines.withTimeoutOrNull(12_000) { Engine.load(api, item.url) } }.getOrNull() ?: return@launch
                 synchronized(details) { details[item.url] = r }
                 // Upgrade the slide on screen in place.
-                if (items.getOrNull(index)?.url == item.url) slides.children.setAll(slide(index))
+                if (items.getOrNull(index)?.url == item.url) { keepFocus(); slides.children.setAll(slide(index)) }
                 val m = com.lagradost.cloudstream3.linux.Metadata
                 if (m.hasTmdb || m.cinemeta || m.anilist) {
                     runCatching { m.details(r) }.getOrNull()?.let { extras[item.url] = it }
-                    if (items.getOrNull(index)?.url == item.url && extras[item.url] != null) slides.children.setAll(slide(index))
+                    if (items.getOrNull(index)?.url == item.url && extras[item.url] != null) { keepFocus(); slides.children.setAll(slide(index)) }
                 }
             }
         }
@@ -304,7 +320,7 @@ class HomePage : StackPane(), Refreshable, TopBarActions {
             slides.children += next
             javafx.animation.FadeTransition(javafx.util.Duration.millis(700.0), next).apply {
                 toValue = 1.0
-                setOnFinished { old?.let { slides.children.remove(it) } }
+                setOnFinished { old?.let { keepFocus(); slides.children.remove(it) } }
                 play()
             }
             renderDots()

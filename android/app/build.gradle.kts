@@ -16,11 +16,11 @@ android {
         targetSdk = 36
         // CI passes the release tag (-PappVersion=7.0.0); local builds use the numbers below.
         val tagVersion = (findProperty("appVersion") as String?)?.removePrefix("v")?.removePrefix("V")
-        versionName = tagVersion ?: "7.2.0"
+        versionName = tagVersion ?: "7.2.1"
         versionCode = tagVersion?.let { v ->
             val (major, minor, patch) = (v.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 } + listOf(0, 0, 0)).take(3)
             major * 10000 + minor * 100 + patch
-        } ?: 70200
+        } ?: 70201
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

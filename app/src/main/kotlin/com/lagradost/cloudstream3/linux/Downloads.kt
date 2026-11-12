@@ -109,7 +109,7 @@ object Downloads {
         synchronized(this) {
             if (loaded) return
             runCatching {
-                val arr = JSONArray(stateFile.readText())
+                val arr = JSONArray(Os.freshest(stateFile).readText())
                 for (i in 0 until arr.length()) fromJson(arr.getJSONObject(i)).let { items[it.id] = it }
             }
             loaded = true
@@ -125,7 +125,7 @@ object Downloads {
         stateFile.parentFile?.mkdirs()
         val tmp = File(stateFile.path + ".tmp")
         tmp.writeText(arr.toString())
-        tmp.renameTo(stateFile)
+        java.nio.file.Files.move(tmp.toPath(), stateFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
 
     private fun update(id: String, persist: Boolean = true, f: (Item) -> Item): Item? {
@@ -284,7 +284,7 @@ object Downloads {
         val part = File(file.path + ".part")
         val have = part.length()
         get(item.source!!, item.headers, if (have > 0) "bytes=$have-" else null).use { r ->
-            if (r.code == 416 && have > 0) { part.renameTo(file); return }
+            if (r.code == 416 && have > 0) { java.nio.file.Files.move(part.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING); return }
             if (!r.isSuccessful) throw IOException("HTTP ${r.code}")
             val append = r.code == 206 && have > 0
             val length = r.body.contentLength()
@@ -310,7 +310,7 @@ object Downloads {
             if (total in 1 until done || (total > 0 && done < total)) throw IOException("Connection closed early")
             update(item.id) { it.copy(bytes = done, total = done) }
         }
-        part.renameTo(file)
+        java.nio.file.Files.move(part.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
 
     // ---------- HLS ----------
@@ -416,7 +416,7 @@ object Downloads {
             }
             update(item.id) { it.copy(total = written, bytes = written) }
         }
-        part.renameTo(file)
+        java.nio.file.Files.move(part.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
 
     /** One segment or key, with a few retries for flaky connections. */
