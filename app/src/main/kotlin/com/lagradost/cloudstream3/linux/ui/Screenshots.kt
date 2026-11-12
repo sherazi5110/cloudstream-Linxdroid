@@ -136,6 +136,26 @@ object Screenshots {
             capture(window, "$prefix-search-suggest.png")
             System.exit(0)
         }
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "goat") {
+            // Stream Goat (7.2): home, About, the new player settings, and the player's Picture and Translate menus.
+            val m = "http://localhost:8766"
+            com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", m)
+            com.lagradost.cloudstream3.linux.Settings.sourcesTimeoutSeconds = 3
+            window.show(Tab.HOME); delay(3500); capture(window, "$prefix-home.png")
+            window.openSettings("about"); delay(1500); capture(window, "$prefix-about.png")
+            window.openSettings("playback"); delay(1500); capture(window, "$prefix-settings-playback.png")
+            val demo = com.lagradost.cloudstream3.linux.Engine.allProviders().firstOrNull { it.name.contains("Demo", true) }
+                ?: com.lagradost.cloudstream3.linux.PluginManager.loadPlugin(java.io.File("tests/DemoProvider/build/repo/Demo.cs3"),
+                    com.lagradost.cloudstream3.linux.PluginData("Demo", null, false, "Demo.cs3", 1)).getOrThrow().providers.single()
+            val anime = demo.newAnimeLoadResponse("Pixel Anime", "$m/title/pixel_city", com.lagradost.cloudstream3.TvType.Anime) {
+                addEpisodes(com.lagradost.cloudstream3.DubStatus.Subbed, listOf(demo.newEpisode("pixel_city|1") { episode = 1; name = "The Missing Frame" }))
+            }
+            Playback.open(demo, anime, com.lagradost.cloudstream3.linux.Engine.playables(anime).first())
+            delay(12000)
+            (Playback.active as? BuiltinPlayer)?.showZoom(); delay(1200); capture(window, "$prefix-player-picture.png")
+            (Playback.active as? BuiltinPlayer)?.showTranslate(); delay(1200); capture(window, "$prefix-player-translate.png")
+            System.exit(0)
+        }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "settings7") {
             window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-extensions.png")
             window.openSettings("storage"); delay(1500); capture(window, "$prefix-settings-storage.png")

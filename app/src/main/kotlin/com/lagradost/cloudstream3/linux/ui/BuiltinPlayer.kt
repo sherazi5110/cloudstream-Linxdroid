@@ -545,7 +545,7 @@ class BuiltinPlayer(
         })
     }
 
-    private fun showZoom() {
+    internal fun showZoom() {
         val items = Zoom.entries.map { z ->
             PlayerMenu.Item(z.label, active = video.zoom == z) { setZoom(z); menu.close() }
         } + listOf(
@@ -695,7 +695,7 @@ class BuiltinPlayer(
     }
 
     /** Languages to translate into, most spoken first. */
-    private fun showTranslate() {
+    internal fun showTranslate() {
         val items = mutableListOf<PlayerMenu.Item>()
         items += PlayerMenu.Item("Back", icon = Icons.BACK, keepOpen = true) { showSubtitles() }
         val source = translateSource()
