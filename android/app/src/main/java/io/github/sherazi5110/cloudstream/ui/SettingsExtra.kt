@@ -138,11 +138,11 @@ internal fun GeneralSection() {
     var parallel by remember { mutableIntStateOf(Settings.parallelDownloads) }
     Hint("Downloads at the same time.")
     ChoiceChips((1..5).toList(), { it.toString() }, { it == parallel }) { parallel = it; Settings.parallelDownloads = it }
-    Hint("Saved in the app's own folder (Android/data/io.github.sherazi5110.cloudstream/files/Movies/CloudStream).")
+    Hint("Saved in the app's own folder (Android/data/io.github.sherazi5110.cloudstream/files/Movies/Stream Goat).")
     if (Build.VERSION.SDK_INT >= 23) PillButton("Allow running in the background", Icons.Filled.BatteryFull, primary = false, compact = true,
         modifier = Modifier.padding(top = 6.dp)) {
         runCatching { context.startActivity(Intent(AndroidSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            .onFailure { App.toast("Open Android Settings → Apps → CloudStream → Battery → Unrestricted") }
+            .onFailure { App.toast("Open Android Settings → Apps → Stream Goat → Battery → Unrestricted") }
     }
 
     Heading("Network blocks")

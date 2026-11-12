@@ -183,4 +183,19 @@ object Settings {
     var parallelDownloads: Int
         get() = string("parallel_downloads", "2").toIntOrNull()?.coerceIn(1, 5) ?: 2
         set(v) = put("parallel_downloads", v.coerceIn(1, 5))
+
+    /** The short animated intro at startup (off: a plain splash while extensions load). */
+    var startupAnimation: Boolean
+        get() = string("startup_animation", "true").toBoolean()
+        set(v) = put("startup_animation", v)
+
+    /** Sharper lines for animation: OFF, AUTO (animated titles) or ON (everything). */
+    var animeEnhance: String
+        get() = string("anime_enhance", "AUTO")
+        set(v) = put("anime_enhance", v)
+
+    /** Colour correction for HDR video shown on an SDR picture: OFF, AUTO (sources marked HDR/Dolby Vision) or ON. */
+    var hdrFix: String
+        get() = string("hdr_fix", "AUTO")
+        set(v) = put("hdr_fix", v)
 }

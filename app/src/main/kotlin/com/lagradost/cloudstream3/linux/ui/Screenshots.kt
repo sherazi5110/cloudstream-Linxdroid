@@ -22,8 +22,23 @@ import javax.imageio.ImageIO
  * player is part of the JavaFX scene, so ordinary snapshots include the video.
  */
 object Screenshots {
+    /** CS_SCREENSHOT_ONLY=intro: frames of the startup animation, then quits. */
+    fun captureIntro(window: AppWindow) {
+        val prefix = System.getenv("CS_SCREENSHOT") ?: return
+        listOf(400, 1000, 1500, 2100, 3000).forEach { ms ->
+            javafx.animation.PauseTransition(javafx.util.Duration.millis(ms.toDouble())).apply {
+                setOnFinished { capture(window, "$prefix-intro-$ms.png"); if (ms == 3000) System.exit(0) }
+            }.play()
+        }
+    }
+
     suspend fun runIfRequested(window: AppWindow) {
         val prefix = System.getenv("CS_SCREENSHOT") ?: return
+        // CS_SCREENSHOT_ONLY=ready: how long startup took (process start → home screen ready), then quit.
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "ready") {
+            println("startup: ready after ${System.currentTimeMillis() - java.lang.management.ManagementFactory.getRuntimeMXBean().startTime} ms")
+            System.exit(0)
+        }
         delay(1500)
         // CS_SCREENSHOT_ONLY=v6: just the profiles / sections / add-on part (quicker while developing).
         if (System.getenv("CS_SCREENSHOT_ONLY") == "glass") {
@@ -108,6 +123,37 @@ object Screenshots {
             MainAPI::class.java.getDeclaredField("lang").apply { isAccessible = true }.set(odd, null)
             synchronized(com.lagradost.cloudstream3.APIHolder.allProviders) { com.lagradost.cloudstream3.APIHolder.allProviders.add(odd) }
             window.openSettings("extensions"); delay(1500); capture(window, "$prefix-settings-nulllang.png")
+            System.exit(0)
+        }
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "suggest") {
+            System.setProperty("cs.subtitles.meta", "http://localhost:8766/stremio/meta")
+            System.setProperty("cs.tmdb.base", "http://localhost:8766/tmdb/3")
+            com.lagradost.cloudstream3.linux.Metadata.tmdbKey = "0123456789abcdef0123456789abcdef"
+            window.show(Tab.SEARCH)
+            delay(800)
+            (window.lookup(".search-field") as? javafx.scene.control.TextField)?.let { f -> f.requestFocus(); f.text = "pix" }
+            delay(2000)
+            capture(window, "$prefix-search-suggest.png")
+            System.exit(0)
+        }
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "goat") {
+            // Stream Goat (7.2): home, About, the new player settings, and the player's Picture and Translate menus.
+            val m = "http://localhost:8766"
+            com.lagradost.cloudstream3.CloudStreamApp.setKey("demo_base_url", m)
+            com.lagradost.cloudstream3.linux.Settings.sourcesTimeoutSeconds = 3
+            window.show(Tab.HOME); delay(3500); capture(window, "$prefix-home.png")
+            window.openSettings("about"); delay(1500); capture(window, "$prefix-about.png")
+            window.openSettings("playback"); delay(1500); capture(window, "$prefix-settings-playback.png")
+            val demo = com.lagradost.cloudstream3.linux.Engine.allProviders().firstOrNull { it.name.contains("Demo", true) }
+                ?: com.lagradost.cloudstream3.linux.PluginManager.loadPlugin(java.io.File("tests/DemoProvider/build/repo/Demo.cs3"),
+                    com.lagradost.cloudstream3.linux.PluginData("Demo", null, false, "Demo.cs3", 1)).getOrThrow().providers.single()
+            val anime = demo.newAnimeLoadResponse("Pixel Anime", "$m/title/pixel_city", com.lagradost.cloudstream3.TvType.Anime) {
+                addEpisodes(com.lagradost.cloudstream3.DubStatus.Subbed, listOf(demo.newEpisode("pixel_city|1") { episode = 1; name = "The Missing Frame" }))
+            }
+            Playback.open(demo, anime, com.lagradost.cloudstream3.linux.Engine.playables(anime).first())
+            delay(12000)
+            (Playback.active as? BuiltinPlayer)?.showZoom(); delay(1200); capture(window, "$prefix-player-picture.png")
+            (Playback.active as? BuiltinPlayer)?.showTranslate(); delay(1200); capture(window, "$prefix-player-translate.png")
             System.exit(0)
         }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "settings7") {

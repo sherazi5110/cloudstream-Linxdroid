@@ -1,22 +1,87 @@
-# CloudStream for Linux, Windows and Android
+# Stream Goat
 
-Run **CloudStream extensions and Stremio add-ons on Linux, Windows, Android phones and Android TV**, from the same repositories the
-official Android app uses, with no changes to the extensions.
+<p align="center"><img src="packaging/linux/cloudstream-linux.png" width="128" alt="Stream Goat logo: a mountain goat on snowy peaks"></p>
 
-**[Open the web version](https://sherazi5110.github.io/cloudstream-Linxdroid/)** (any phone or browser, Stremio add-ons) · **[Download](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** · **[How to install (Windows, .deb, Flatpak, .apk)](INSTALL.md)**
+<p align="center"><b>Movies, series, anime and Live TV on Windows, Linux, Android phones and Android TV.</b><br>
+Created by <b>Syed Ali Hamza</b></p>
 
-| Linux | Windows | Android |
-|---|---|---|
-| `.deb` for Ubuntu, Debian, Mint, ChromeOS · `.flatpak` for any distro · `.tar` with your own Java | `.msi` installer or portable `.zip` for Windows 10/11, VLC included | `.apk` for phones, tablets, Android TV and Fire TV (in testing) |
+![Stream Goat's startup intro](docs/screenshots/intro.png)
 
-> **Android app (in testing):** a new app for **phones (touch)** and **Android TV (remote)** with this app's look,
-> profiles, Live TV, Stremio add-ons, TMDB and the VLC player. [More below](#android-app-in-testing).
+Stream Goat runs **CloudStream extensions and Stremio add-ons**, from the same repositories the official CloudStream
+Android app uses, with no changes to the extensions. *(Formerly "CloudStream for Linux"; your extensions, profiles,
+library and downloads carry over.)*
+
+**[Download](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** · **[Open the web version](https://sherazi5110.github.io/cloudstream-Linxdroid/)** (any phone or browser, Stremio add-ons) · **[Full install guide](INSTALL.md)**
+
+## Download for your device
+
+Every file is on the **[latest release](https://github.com/sherazi5110/cloudstream-Linxdroid/releases/latest)** page.
+
+### Windows 10 and 11
+
+| File | What it is |
+|---|---|
+| `streamgoat-windows-<version>.msi` | **Installer** (recommended). Installs for your user, no admin password; Start-menu and desktop shortcuts. |
+| `streamgoat-windows-<version>-portable.zip` | **Portable**: unzip anywhere (even a USB stick) and run `Stream Goat\Stream Goat.exe`. |
+
+Java and **VLC are included**, so there's nothing else to install. The installer isn't code-signed yet: if Windows says
+*"Windows protected your PC"*, click **More info → Run anyway**. Your data lives in `%APPDATA%\Stream Goat`; installing
+a newer `.msi` updates in place. [More: INSTALL.md → Windows](INSTALL.md)
+
+### Android phones, tablets and Android TV
+
+| File | For |
+|---|---|
+| `streamgoat-android-arm64-v8a.apk` | Most phones and tablets from the last ~8 years |
+| `streamgoat-android-armeabi-v7a.apk` | Android TV, Google TV, Fire TV Stick and most TV boxes |
+| `streamgoat-android-universal.apk` | Not sure? This one runs everywhere (larger download) |
+
+Open the `.apk` on the device and allow *Install unknown apps* when asked. On a TV, use the **Downloader** app (or
+`adb install`). The app has a touch layout for phones and a remote-friendly layout for TV, the VLC player, and real
+**HDR** on HDR screens. [More: INSTALL.md → Android](INSTALL.md#android-phones-tablets-and-android-tv)
+
+### Linux
+
+| File | For |
+|---|---|
+| `streamgoat-linux_<version>_amd64.deb` | Ubuntu, Debian, Mint, Pop!_OS, Zorin, ChromeOS: `sudo apt install ./streamgoat-linux_<version>_amd64.deb` |
+| `streamgoat-linux.flatpak` | Any distro with Flatpak (Fedora, Arch, openSUSE, Steam Deck): `flatpak install --user streamgoat-linux.flatpak` |
+| `streamgoat-linux-<tag>.tar` | Any Linux with Java 21 and VLC already installed |
+
+The `.deb` and Flatpak bring everything they need (VLC is installed with the `.deb`). The package is still named
+`cloudstream-linux`, so a new `.deb` updates an older install. Run it as **Stream Goat** from your app menu, or
+`streamgoat` in a terminal. [More: INSTALL.md → Linux](INSTALL.md)
+
+## New in 7.2: Stream Goat
+
+- **New name, logo and startup intro.** A mountain goat on snowy peaks; peaks rise out of a night sky, an arc of stars
+  sweeps over the summit and the goat appears (about 3 seconds, any key or tap skips it; Settings → Appearance turns
+  it off). Settings → About: *Created by Syed Ali Hamza*.
+- **Search suggestions** drop down as you type a title, like the official app (TMDB with your key, otherwise
+  Cinemeta). Desktop, Android and the web version.
+- **Translate subtitles** into 24 languages (English, Hindi, Urdu, Chinese, Spanish, French, Arabic, Bengali,
+  Portuguese, Russian and more): Subtitles → *Translate subtitles to…* in the player. Google's neural translation,
+  every line keeps its timing, and translations are saved so watching again is instant. Works on subtitle files
+  (SRT, WebVTT), not subtitles burned into the picture. Windows, Linux and Android.
+- **Anime enhance** (Windows, Linux): low-resolution animation is upscaled to your screen inside VLC with Lanczos
+  instead of a soft stretch, so line art stays crisp (measured on a 240p cartoon at 720p: 26.8 → 27.4 dB PSNR against
+  the original). Auto for anime and cartoons; also in the player's **Picture** menu (Z).
+- **HDR:** on Android, HDR10, HLG and Dolby Vision play in real HDR on HDR screens. On Windows and Linux the player
+  can't output HDR, so HDR sources get a colour correction instead of looking grey and washed out.
+
+| | |
+|---|---|
+| ![Search suggestions](docs/screenshots/search-suggest.png) | ![About: Created by Syed Ali Hamza](docs/screenshots/about.png) |
+| ![Translate subtitles](docs/screenshots/player-translate.png) | ![Picture menu: anime enhance and HDR](docs/screenshots/player-picture.png) |
+| ![Home](docs/screenshots/home.png) | ![Playback settings](docs/screenshots/settings-playback.png) |
+
+## Everything else
 
 - **New in 7.0 (Linux and Android):**
   - **Downloads** for watching offline: *Download* on a movie, a download button on each episode (or *Download these* for a
     whole season). Direct files and HLS streams (joined into one file, AES-128 decrypted), with subtitles saved next to
     them. Downloads resume after a pause, a restart or a dropped connection, and a downloaded episode plays from the file
-    even when you're offline. Library → **Downloads** lists them. Linux saves to `~/Downloads/CloudStream` (changeable in
+    even when you're offline. Library → **Downloads** lists them. Linux saves to `~/Downloads/Stream Goat` (changeable in
     Settings → Storage); Android keeps a notification with progress while it downloads.
   - **Skip intro** for anime (times from the community AniSkip database): *Skip intro*, *Skip recap* and *Skip credits*
     buttons, or skip automatically (Settings → Playback).
@@ -27,7 +92,7 @@ official Android app uses, with no changes to the extensions.
   - **"Wrong match?"** on title pages: when ratings or artwork belong to a different film, search TMDB and pick the right
     one (or *No match*).
   - The Flatpak moves to the Freedesktop **25.08** runtime.
-- **New look (6.0):** a slim icon rail, a clean top bar (source picker, search, your profile) and a full-width featured banner with backdrop, rating, "#1 in …", plot, *Play* and *More Info*. A new logo (a big C with an s inside, over a cloud) whose letters follow your theme colour.
+- **New look (6.0):** a slim icon rail, a clean top bar (source picker, search, your profile) and a full-width featured banner with backdrop, rating, "#1 in …", plot, *Play* and *More Info*. 
 - **Live TV (6.0.1):** a Live TV page of its own (below Home in the rail) for IPTV: **M3U playlists with XMLTV guides**, **Xtream Codes** logins, and **Stremio / Nuvio TV add-ons** (add-ons with TV channel catalogs move here automatically) and playlist files. Channel logos come from the playlist, or from the open iptv-org database when missing. What's on now and next, categories from the playlist's groups, favourites, recently watched, channel search and a country filter. Live TV sources never appear on Home.
 - **Metadata & integrations (6.0.1):** add your free **TMDB** API key for ratings on posters, wide backdrops and title logos, cast with photos, trailers and similar titles on every extension; **IMDb ratings via Cinemeta** and **AniList** scores for anime need no key.
 - **Watched controls (6.0.1):** mark films and episodes as watched (or not), and remove titles from Continue Watching, right from the card, My list, history or the title page.
@@ -59,7 +124,7 @@ official Android app uses, with no changes to the extensions.
 | ![Downloads in the Library](docs/screenshots/library-downloads.png) | ![Download buttons on episodes](docs/screenshots/details-downloads.png) |
 | ![Skip intro](docs/screenshots/player-skip.png) | ![Next-episode countdown](docs/screenshots/player-next.png) |
 | ![TV guide grid](docs/screenshots/livetv-guide.png) | ![Wrong match? Choose the right title](docs/screenshots/match.png) |
-| ![Home](docs/screenshots/home.png) | ![Who's watching](docs/screenshots/profiles.png) |
+| ![Who's watching](docs/screenshots/profiles.png) | ![Profile menu](docs/screenshots/profile-menu.png) |
 | ![Profile editor](docs/screenshots/profile-editor.png) | ![Kids profile settings](docs/screenshots/profile-editor-kids.png) |
 | ![Kids home](docs/screenshots/kids-home.png) | ![Stremio add-ons](docs/screenshots/addons.png) |
 | ![Live TV](docs/screenshots/livetv.png) | ![Live TV sources](docs/screenshots/settings-livetv.png) |
@@ -79,10 +144,10 @@ See **[docs/ANALYSIS.md](docs/ANALYSIS.md)** for how the Android app works, and 
 
 ## Android app (in testing)
 
-The Android app is a new app (not a fork of the official one) with the same look, features and simplicity as the Linux
-app. It's in testing: releases from V7 include `.apk` files, and test builds can be downloaded from the latest
+The Android app is a new app (not a fork of the official one) with the same look, features and simplicity as the
+desktop app. It's in testing: releases from V7 include `.apk` files, and test builds can be downloaded from the latest
 [Build workflow run](https://github.com/sherazi5110/cloudstream-Linxdroid/actions/workflows/build.yml) (artifact
-`cloudstream-android`). The pictures below are the approved design previews; on landscape tablets and TV the app uses
+`streamgoat-android`). The pictures below are the approved design previews; on landscape tablets and TV the app uses
 the Linux app's icon rail, top bar, banner and title page.
 
 | | |
@@ -107,7 +172,7 @@ over from the Linux app.
 **New in 7.0 on Android:** **Downloads** (the *Download* button on a movie; on episodes, the download icon in the
 phone list, or hold OK / long-press an episode and choose *Download*). They continue in the background with a progress
 notification (*Pause all* in it), and are listed under My list → **Downloads**. Files are kept in the app's own folder
-(`Android/data/io.github.sherazi5110.cloudstream/files/Movies/CloudStream`), so no storage permission is needed;
+(`Android/data/io.github.sherazi5110.cloudstream/files/Movies/Stream Goat`), so no storage permission is needed;
 uninstalling the app deletes them. **Skip intro** (anime) and the **next-episode countdown** appear in the player (on a
 TV, OK presses the button, Back cancels the countdown). **TV guide:** the clock button next to the Live TV search.
 

@@ -80,11 +80,11 @@ object Downloads {
     // ---------- where files go ----------
 
     /**
-     * The app's own folder on shared storage (Android/data/<app>/files/Movies/CloudStream): no storage
+     * The app's own folder on shared storage (Android/data/<app>/files/Movies/Stream Goat): no storage
      * permission needed. Uninstalling the app removes it.
      */
     fun folder(): File =
-        App.context.getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES)?.let { File(it, "CloudStream") }
+        App.context.getExternalFilesDir(android.os.Environment.DIRECTORY_MOVIES)?.let { File(it, "Stream Goat") }
             ?: File(App.context.filesDir, "downloads")
 
     // ---------- the list ----------

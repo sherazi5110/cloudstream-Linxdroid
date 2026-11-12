@@ -11,7 +11,7 @@ addons the player's online subtitle search uses.
 
 /iptv/ (an M3U playlist + XMLTV guide), /xtream/ (an Xtream Codes server), /addon-tv/ (a Stremio
 TV add-on), /tmdb/3/ (TMDB, key "0123456789abcdef0123456789abcdef") and /anilist (GraphQL) are the
-Live TV and metadata stand-ins.
+Live TV and metadata stand-ins; /translate_a/single stands in for subtitle translation.
 
 /addon/ is a whole Stremio add-on ("Test Add-on"): manifest, catalogs (with search and
 skip paging), metadata (a film and a series with episodes), streams (with proxy headers,
@@ -41,7 +41,16 @@ FILES = [{"name": "test_film_640.mp4", "format": "h.264", "height": "360"},
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get("Content-Length", "0"))
-        body = json.loads(self.rfile.read(length) or b"{}")
+        raw = self.rfile.read(length)
+        if self.path.startswith("/translate_a/single"):
+            # Google Translate's free endpoint: "[[[translated, original, ...], ...], ...]". Each line becomes
+            # "<lang>: LINE"; the answer comes back in two pieces, like the real one does for long text.
+            lang = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)["tl"][0]
+            text = urllib.parse.parse_qs(raw.decode())["q"][0]
+            out = "\n".join(f"{lang}: {line.upper()}" for line in text.split("\n"))
+            half = len(out) // 2
+            return self.send(200, json.dumps([[[out[:half], "x"], [out[half:], "y"]], None, "en"]))
+        body = json.loads(raw or b"{}")
         if self.path.startswith("/anilist"):
             title = body.get("variables", {}).get("s", "")
             if "pixel" in title.lower():

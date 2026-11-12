@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>io.github.sherazi5110.CloudStreamLinux</id>
-  <name>CloudStream</name>
-  <summary>Run CloudStream extensions on Linux</summary>
+  <name>Stream Goat</name>
+  <summary>Movies, series, anime and Live TV from CloudStream extensions</summary>
   <developer id="io.github.sherazi5110">
-    <name>Tennant Creek</name>
+    <name>Syed Ali Hamza</name>
   </developer>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
@@ -39,6 +39,7 @@
   </screenshots>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="7.2.0" date="2026-11-12"/>
     <release version="7.1.0" date="2026-11-10"/>
     <release version="7.0.2" date="2026-11-10"/>
     <release version="7.0.1" date="2026-11-07"/>

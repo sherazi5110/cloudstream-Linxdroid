@@ -283,7 +283,7 @@ private fun Details(api: MainAPI, r: LoadResponse) {
                             LazyRow(contentPadding = PaddingValues(horizontal = edge, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                                 items(similar) { s ->
                                     Column(Modifier.width(if (wide) 140.dp else 108.dp)) {
-                                        Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).card { Nav.searchQuery = s.title; Nav.select(Tab.SEARCH) }) {
+                                        Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).card { Nav.searchQuery = s.title; Nav.searchSubmitted = s.title; Nav.select(Tab.SEARCH) }) {
                                             NetImage(s.poster, Modifier.fillMaxSize())
                                             s.vote?.takeIf { it > 0 }?.let { ScoreBadge("%.1f".format(it), Modifier.align(Alignment.TopStart).padding(6.dp)) }
                                         }

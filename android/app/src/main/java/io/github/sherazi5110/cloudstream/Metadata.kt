@@ -212,6 +212,31 @@ object Metadata {
         return null
     }
 
+    /**
+     * Title suggestions while typing in Search, like the official app's: from TMDB when the user added a key,
+     * otherwise from Cinemeta (IMDb titles, no key needed). Up to 8 distinct titles; empty on any failure.
+     */
+    suspend fun suggestions(query: String): List<String> = withContext(Dispatchers.IO) {
+        val q = query.trim()
+        if (q.length < 2) return@withContext emptyList()
+        runCatching {
+            if (hasTmdb) {
+                val results = tmdb("/search/multi", mapOf("query" to q, "language" to language, "include_adult" to "false"))?.optJSONArray("results")
+                if (results != null) return@withContext (0 until results.length()).mapNotNull { results.optJSONObject(it) }
+                    .filter { it.optString("media_type") in setOf("movie", "tv") }
+                    .map { it.optString("title").ifBlank { it.optString("name") } }
+                    .filter { it.isNotBlank() }.distinct().take(8)
+            }
+            val enc = java.net.URLEncoder.encode(q, "UTF-8").replace("+", "%20")
+            listOf("movie", "series").flatMap { type ->
+                runCatching {
+                    val metas = JSONObject(app.get("$cinemetaBase/catalog/$type/top/search=$enc.json", timeout = 8).text).optJSONArray("metas")
+                    (0 until (metas?.length() ?: 0)).mapNotNull { metas!!.optJSONObject(it)?.optString("name")?.takeIf { n -> n.isNotBlank() } }
+                }.getOrDefault(emptyList())
+            }.sortedBy { if (it.startsWith(q, ignoreCase = true)) 0 else 1 }.distinct().take(8)
+        }.getOrDefault(emptyList())
+    }
+
     // ---------- choosing the match by hand ("Wrong match?") ----------
 
     data class Candidate(val id: Int, val mediaType: String, val title: String, val year: Int?, val poster: String?, val overview: String?)

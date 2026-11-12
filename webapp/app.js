@@ -1,4 +1,4 @@
-// CloudStream for the browser (iPhone, Android, computers): a static web app on GitHub Pages that uses
+// Stream Goat for the browser (iPhone, Android, computers): a static web app on GitHub Pages that uses
 // Stremio add-ons directly. No server: add-ons, My list, history and progress are saved in this browser.
 // CloudStream extensions can't run in a browser; they need the Linux/Android apps (or the server web app).
 "use strict";
@@ -220,6 +220,27 @@ async function search(params) {
   const form = $view.querySelector("form");
   const results = $view.querySelector("#results");
   form.addEventListener("submit", (e) => { e.preventDefault(); form.q.blur(); location.hash = `#/search?${qs({ q: form.q.value.trim() })}`; });
+  // Suggestions while typing (Cinemeta titles), like the apps; a tap searches.
+  const box = document.createElement("div");
+  box.className = "suggest-box"; box.hidden = true;
+  form.appendChild(box);
+  let timer, seq = 0;
+  form.q.addEventListener("input", () => {
+    clearTimeout(timer);
+    const q = form.q.value.trim();
+    if (q.length < 2) { box.hidden = true; return; }
+    timer = setTimeout(async () => {
+      const mine = ++seq;
+      const names = (await Promise.all(["movie", "series"].map((t) =>
+        fetchJson(`https://v3-cinemeta.strem.io/catalog/${t}/top/search=${encodeURIComponent(q)}.json`, 8000).then((r) => (r.metas || []).map((m) => m.name)).catch(() => []))))
+        .flat().filter(Boolean);
+      if (mine !== seq) return;
+      const list = [...new Set(names.sort((a, b) => (b.toLowerCase().startsWith(q.toLowerCase())) - (a.toLowerCase().startsWith(q.toLowerCase()))))].slice(0, 8);
+      box.innerHTML = list.map((n) => `<button type="button" class="option">${esc(n)}</button>`).join("");
+      box.hidden = !list.length;
+      box.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { form.q.value = b.textContent; box.hidden = true; form.requestSubmit(); }));
+    }, 250);
+  });
   if (!params.q) { form.q.focus(); results.innerHTML = `<div class="empty">Searches every add-on that can search.</div>`; return; }
   const targets = addons().flatMap((a) => (a.manifest.catalogs || []).filter((c) => (c.extra || []).some((e) => e.name === "search") || (c.extraSupported || []).includes("search")).map((c) => ({ a, c })));
   if (!targets.length) { results.innerHTML = `<div class="empty"><b>No add-on can search</b>Add one in the Add-ons tab.</div>`; return; }
@@ -330,7 +351,7 @@ function classify(s) {
   if (s.url) {
     const headers = Object.keys((s.behaviorHints && s.behaviorHints.proxyHeaders && s.behaviorHints.proxyHeaders.request) || {}).filter((k) => k.toLowerCase() !== "user-agent");
     if (location.protocol === "https:" && s.url.startsWith("http:")) return { ok: false, why: "Not a secure (https) link: browsers block it" };
-    if (headers.length) return { ok: false, why: "Needs special headers: works in the CloudStream apps, not in a browser" };
+    if (headers.length) return { ok: false, why: "Needs special headers: works in the Stream Goat apps, not in a browser" };
     const mkv = /\.mkv(\?|$)/i.test(s.url);
     return { ok: true, why: mkv ? "MKV: may not play on iPhone" : s.behaviorHints && s.behaviorHints.notWebReady ? "May not play in a browser" : "" };
   }
@@ -540,7 +561,7 @@ async function more() {
       <button class="btn primary wide" style="margin-top:10px">${icons.add} Install</button></form>
     <div class="note">Paste the <b>manifest link</b> of a Stremio add-on (the same ones Stremio and Nuvio use; the add-on's
       website shows it after you configure it). Add-ons that give <b>direct https video links</b> play best here.
-      Torrent add-ons and links that need special headers only work in the CloudStream apps.
+      Torrent add-ons and links that need special headers only work in the Stream Goat apps.
       <b>Debrid add-ons</b> work when set up with your account, but on iPhone MKV files often won't play: pick MP4 results.</div>
     <div id="addons">${list.map((a, i) => `<div class="addon">${a.manifest.logo ? `<img src="${esc(a.manifest.logo)}" alt="" referrerpolicy="no-referrer">` : `<div class="noimg">${esc(a.manifest.name.slice(0, 2))}</div>`}
       <div class="t"><b>${esc(a.manifest.name)}</b><span>${esc([(a.manifest.resources || []).map((r) => typeof r === "string" ? r : r.name).join(", "), a.manifest.description].filter(Boolean).join(" · "))}</span></div>
@@ -549,10 +570,10 @@ async function more() {
     <p class="muted small">Your add-ons, My list, history and progress are saved in this browser only. Back them up to move them to another phone or browser.</p>
     <div style="display:flex;gap:10px"><button class="btn small" id="exp">Back up</button><label class="btn small">Restore<input type="file" accept="application/json,.json" id="imp" hidden></label></div>
     <h2>On iPhone</h2>
-    <p class="muted small">In Safari tap <b>Share</b> → <b>Add to Home Screen</b>. CloudStream then opens full screen like an app, with its own storage.</p>
+    <p class="muted small">In Safari tap <b>Share</b> → <b>Add to Home Screen</b>. Stream Goat then opens full screen like an app, with its own storage.</p>
     <h2>About</h2>
-    <p class="muted small">CloudStream web, a free browser version of <a href="https://github.com/sherazi5110/cloudstream-Linxdroid" style="color:var(--accent)">CloudStream for Linux and Android</a>.
-      It plays streams from Stremio add-ons; CloudStream extensions need the Linux or Android app. This page hosts no content.</p>
+    <p class="muted small"><b style="color:var(--accent)">Created by Syed Ali Hamza.</b> Stream Goat web, the free browser version of <a href="https://github.com/sherazi5110/cloudstream-Linxdroid" style="color:var(--accent)">Stream Goat for Linux, Windows and Android</a>.
+      It plays streams from Stremio add-ons; CloudStream extensions need the Linux, Windows or Android app. This page hosts no content.</p>
   </div>`;
   const form = $view.querySelector("#add");
   form.addEventListener("submit", async (e) => {
@@ -584,13 +605,13 @@ async function more() {
     const data = { format: "cloudstream-web-backup", version: 1, addons: addons().map((a) => a.url), list: lib.list(), history: lib.history(), progress: store.get("progress", {}) };
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
-    a.download = `cloudstream-web-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `streamgoat-web-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
   });
   $view.querySelector("#imp").addEventListener("change", async (e) => {
     try {
       const data = JSON.parse(await e.target.files[0].text());
-      if (data.format !== "cloudstream-web-backup") throw new Error("That isn't a CloudStream web backup");
+      if (data.format !== "cloudstream-web-backup") throw new Error("That isn't a Stream Goat web backup");
       store.set("list", data.list || []); store.set("history", data.history || {}); store.set("progress", data.progress || {});
       store.set("addons", []); store.set("defaultsDone", true);
       for (const u of data.addons || []) { try { await installAddon(u); } catch { /* skip unreachable */ } }

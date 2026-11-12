@@ -194,6 +194,8 @@ private fun ProfilesSection() {
 
 @Composable
 private fun AppearanceSection() {
+    var intro by remember { mutableStateOf(Settings.startupAnimation) }
+    SwitchRow("Startup animation", "The short Stream Goat intro when the app opens (tap to skip).", intro) { intro = it; Settings.startupAnimation = it }
     Heading("Presets")
     ChoiceChips(ThemePreset.entries, { it.label }, { ThemeState.preset == it }) { ThemeState.apply(it) }
     Heading("Theme")
@@ -234,6 +236,13 @@ private fun PlayerSection() {
     Heading("Preferred quality")
     var quality by remember { mutableStateOf(Settings.preferredQuality) }
     ChoiceChips(listOf(0, 2160, 1080, 720, 480), { if (it == 0) "Best" else "${it}p" }, { it == quality }) { quality = it; Settings.preferredQuality = it }
+    Heading("HDR")
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val hdrTypes = remember { io.github.sherazi5110.cloudstream.Picture.screenHdrTypes(ctx as? android.app.Activity) }
+    var hdr by remember { mutableStateOf(Settings.hdrOutput) }
+    ChoiceChips(listOf("AUTO", "ON", "OFF"), { mapOf("AUTO" to "Auto", "ON" to "Always", "OFF" to "Off")[it]!! }, { it == hdr }) { hdr = it; Settings.hdrOutput = it }
+    Hint(if (hdrTypes.isEmpty()) "This screen doesn't report HDR support, so HDR video is shown in standard colour." else
+        "This screen shows ${hdrTypes.distinct().joinToString(", ")}. Auto: sources marked HDR or Dolby Vision play in HDR (pinch-to-zoom is off for them; the zoom modes still work).")
     Heading("Wait for sources")
     var timeout by remember { mutableStateOf(Settings.sourcesTimeoutSeconds) }
     ChoiceChips(listOf(30, 60, 90, 120), { "$it s" }, { it == timeout }) { timeout = it; Settings.sourcesTimeoutSeconds = it }
@@ -367,8 +376,9 @@ private fun AboutSection() {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
         Logo(48.dp)
         Column(Modifier.padding(start = 12.dp)) {
-            Text("CloudStream", style = MaterialTheme.typography.headlineSmall)
+            Text("Stream Goat", style = MaterialTheme.typography.headlineSmall)
             Text("Version ${versionName ?: "?"}", style = MaterialTheme.typography.bodySmall)
+            Text("Created by Syed Ali Hamza", style = MaterialTheme.typography.bodyMedium, color = Palette.accent)
         }
     }
     PillButton("Source code on GitHub", null, primary = false, compact = true) {

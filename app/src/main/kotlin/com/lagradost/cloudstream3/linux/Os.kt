@@ -10,14 +10,23 @@ object Os {
     val isWindows: Boolean = System.getProperty("os.name").orEmpty().startsWith("Windows", ignoreCase = true)
     val isMac: Boolean = System.getProperty("os.name").orEmpty().startsWith("Mac", ignoreCase = true)
 
-    /** "Linux" or "Windows", for texts such as "CloudStream for Windows". */
+    /** "Linux" or "Windows", for texts such as "for Windows". */
     val name: String = when { isWindows -> "Windows"; isMac -> "macOS"; else -> "Linux" }
 
     private val home: String get() = System.getProperty("user.home")
 
-    /** Linux: ~/.local/share/cloudstream-linux (XDG). Windows: %APPDATA%\CloudStream. */
+    /**
+     * Linux: ~/.local/share/cloudstream-linux (XDG; the original name, kept so updates keep everyone's data).
+     * Windows: %APPDATA%\Stream Goat; data from 7.1.0 (%APPDATA%\CloudStream) is moved there once.
+     */
     fun defaultDataDir(): File = when {
-        isWindows -> File(System.getenv("APPDATA") ?: "$home\\AppData\\Roaming", "CloudStream")
+        isWindows -> {
+            val appData = System.getenv("APPDATA") ?: "$home\\AppData\\Roaming"
+            val dir = File(appData, "Stream Goat")
+            val old = File(appData, "CloudStream")
+            if (!dir.exists() && old.isDirectory) runCatching { old.renameTo(dir) }
+            dir
+        }
         else -> File((System.getenv("XDG_DATA_HOME") ?: "$home/.local/share"), "cloudstream-linux")
     }
 
@@ -49,7 +58,7 @@ object Os {
 
     /** What to do when VLC's libraries are missing. */
     val vlcHint: String get() = when {
-        isWindows -> "VLC is included with CloudStream; reinstall CloudStream, or install VLC (64-bit) from videolan.org"
+        isWindows -> "VLC is included with Stream Goat; reinstall Stream Goat, or install VLC (64-bit) from videolan.org"
         else -> "sudo apt install libvlc5 vlc-plugin-base"
     }
 
@@ -78,7 +87,7 @@ object Os {
                 .inputStream.bufferedReader().readText()
             if (current.contains(exe, ignoreCase = true)) return
             fun reg(vararg args: String) = ProcessBuilder(listOf("reg", "add") + args.toList() + "/f").redirectErrorStream(true).start().waitFor()
-            reg(key, "/ve", "/d", "URL:CloudStream repository")
+            reg(key, "/ve", "/d", "URL:Stream Goat repository")
             reg(key, "/v", "URL Protocol", "/d", "")
             reg("$key\\DefaultIcon", "/ve", "/d", "\"$exe\",0")
             reg("$key\\shell\\open\\command", "/ve", "/d", command)

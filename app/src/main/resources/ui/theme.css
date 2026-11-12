@@ -805,3 +805,15 @@
 .dl-badge.failed { -fx-background-color: -cs-bad; }
 .dl-badge-text { -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; }
 .bad { -fx-text-fill: -cs-bad; }
+
+.about-credit { -fx-text-fill: -cs-accent; -fx-font-size: 15px; -fx-font-weight: bold; }
+
+/* ---------- intro ---------- */
+.intro-title { -fx-font-size: 44px; -fx-font-weight: bold; -fx-text-fill: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 18, 0.2, 0, 2); }
+.intro-credit { -fx-font-size: 14px; -fx-text-fill: rgba(255,255,255,0.78); -fx-font-weight: bold; }
+
+/* ---------- search suggestions ---------- */
+.suggest-box { -fx-background-color: -cs-surface-2; -fx-background-radius: 14; -fx-border-color: -cs-line; -fx-border-radius: 14; -fx-padding: 6; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 24, 0.1, 0, 8); }
+.suggest-row { -fx-padding: 9 12 9 12; -fx-background-radius: 10; -fx-cursor: hand; }
+.suggest-row.on, .suggest-row:hover { -fx-background-color: -cs-surface-3; }
+.suggest-text { -fx-text-fill: -cs-text; -fx-font-size: 14px; }

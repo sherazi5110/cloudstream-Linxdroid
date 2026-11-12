@@ -79,10 +79,10 @@ object Downloads {
 
     // ---------- where files go ----------
 
-    /** <Downloads>/CloudStream (the XDG download folder on Linux; the Flatpak may write there), or the chosen folder. */
+    /** <Downloads>/Stream Goat (the XDG download folder on Linux; the Flatpak may write there), or the chosen folder. */
     fun folder(): File {
         Settings.downloadFolder.takeIf { it.isNotBlank() }?.let { return File(it) }
-        return File(Os.downloadsDir(), "CloudStream")
+        return File(Os.downloadsDir(), "Stream Goat")
     }
 
     // ---------- the list ----------

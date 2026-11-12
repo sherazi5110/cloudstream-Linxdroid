@@ -33,6 +33,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
@@ -186,6 +187,7 @@ class PlayerController(
         playCalledAt = android.os.SystemClock.elapsedRealtime()
         val keep = if (started) player.time.takeIf { it > 0 } ?: startAt else startAt
         current = link
+        matchSurface(link)
         tried += link.url
         error = null
         ended = false
@@ -215,7 +217,16 @@ class PlayerController(
         }
         player.rate = speed
         player.videoScale = zoom.scale
-        selectedSubtitle?.let { url -> subtitles.firstOrNull { it.url == url }?.let { addSubtitle(it) } }
+        selectedSubtitle?.let { url ->
+            subtitles.firstOrNull { it.url == url }?.let { addSubtitle(it) }
+                ?: addedFiles.firstOrNull { it.first.absolutePath == url }?.let { selectFile(it.first) }
+        }
+    }
+
+    /** Shows an already added subtitle file again (a new source starts without it). */
+    fun selectFile(file: java.io.File) {
+        selectedSubtitle = file.absolutePath
+        player.addSlave(IMedia.Slave.Type.Subtitle, Uri.fromFile(file), true)
     }
 
     /**
@@ -265,10 +276,63 @@ class PlayerController(
         subtitles.firstOrNull { s -> subs.any { w -> io.github.sherazi5110.cloudstream.OnlineSubtitles.matches(s.lang, w) } }?.let { addSubtitle(it) }
     }
 
-    /** A subtitle file downloaded from the internet (OpenSubtitles). */
-    fun addSubtitleFile(file: java.io.File) {
+    /** A subtitle file downloaded from the internet (OpenSubtitles) or translated. */
+    fun addSubtitleFile(file: java.io.File, name: String = file.name) {
         selectedSubtitle = file.absolutePath
+        addedFiles += file to name
         player.addSlave(IMedia.Slave.Type.Subtitle, Uri.fromFile(file), true)
+    }
+
+    /** Subtitle files added during this playback (online, translated), with their names. */
+    val addedFiles = mutableStateListOf<Pair<java.io.File, String>>()
+    var translating by mutableStateOf<String?>(null)
+        private set
+
+    /** What "Translate subtitles" starts from: the subtitles showing, else the first ones on offer. */
+    fun translateSourceName(): String? {
+        val sel = selectedSubtitle
+        addedFiles.firstOrNull { it.first.absolutePath == sel }?.let { return it.second }
+        subtitles.firstOrNull { it.url == sel }?.let { return it.lang }
+        return subtitles.firstOrNull()?.lang ?: addedFiles.firstOrNull()?.second
+    }
+
+    private suspend fun translateSourceFile(): java.io.File? = withContext(Dispatchers.IO) {
+        val sel = selectedSubtitle
+        addedFiles.firstOrNull { it.first.absolutePath == sel }?.let { return@withContext it.first }
+        val sub = subtitles.firstOrNull { it.url == sel } ?: subtitles.firstOrNull()
+            ?: return@withContext addedFiles.firstOrNull()?.first
+        if (sub.url.startsWith("file:")) return@withContext java.io.File(Uri.parse(sub.url).path!!)
+        if (sub.url.startsWith("/")) return@withContext java.io.File(sub.url)
+        val dir = java.io.File(App.context.cacheDir, "subtitles").apply { mkdirs() }
+        val file = java.io.File(dir, "x-${sub.url.hashCode().toUInt()}.sub")
+        if (!file.isFile || file.length() == 0L) {
+            val headers = sub.headers ?: listOfNotNull(current?.referer?.takeIf { it.isNotBlank() }?.let { "Referer" to it }).toMap()
+            val r = com.lagradost.cloudstream3.app.get(sub.url, headers = headers, timeout = 20)
+            if (!r.isSuccessful) throw java.io.IOException("HTTP ${r.code}")
+            file.writeBytes(r.body.bytes())
+        }
+        file
+    }
+
+    /** Translates the current subtitles into [lang] and switches to them. */
+    fun translateSubtitles(lang: String) {
+        val name = io.github.sherazi5110.cloudstream.SubtitleTranslator.languageName(lang)
+        val from = translateSourceName() ?: return
+        translating = name
+        App.toast("Translating subtitles to $name…")
+        scope.launch {
+            try {
+                val src = translateSourceFile() ?: throw java.io.IOException("No subtitles to translate")
+                val out = io.github.sherazi5110.cloudstream.SubtitleTranslator.translateFile(src, lang, java.io.File(App.context.cacheDir, "subtitles"))
+                addSubtitleFile(out, "$from → $name")
+                App.toast("Subtitles: $name (translated)")
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) throw t
+                App.toast("Couldn't translate: ${t.message ?: t}")
+            } finally {
+                translating = null
+            }
+        }
     }
 
     private fun loadSegments() {
@@ -333,13 +397,38 @@ class PlayerController(
         player.addSlave(IMedia.Slave.Type.Subtitle, Uri.parse(url), true)
     }
 
+    private var layout: VLCVideoLayout? = null
+    /** True while the video is on a SurfaceView (HDR output) rather than a TextureView. */
+    var hdrSurface by mutableStateOf(false)
+        private set
+    private val screenHdr by lazy { io.github.sherazi5110.cloudstream.Picture.screenHdrTypes(layoutActivity()).isNotEmpty() }
+
+    private fun layoutActivity(): android.app.Activity? {
+        var ctx = layout?.context
+        while (ctx is android.content.ContextWrapper) { if (ctx is android.app.Activity) return ctx; ctx = ctx.baseContext }
+        return null
+    }
+
     fun attach(layout: VLCVideoLayout) {
-        // TextureView, so pinch-to-zoom (a view transform) also scales the picture.
-        player.attachViews(layout, null, true, true)
+        this.layout = layout
+        hdrSurface = io.github.sherazi5110.cloudstream.Picture.useHdrSurface(current, screenHdr)
+        // TextureView, so pinch-to-zoom (a view transform) also scales the picture; SurfaceView for HDR.
+        player.attachViews(layout, null, true, !hdrSurface)
         player.videoScale = zoom.scale
     }
 
-    fun detach() = player.detachViews()
+    /** A new source may need the other kind of surface (HDR or not): re-attach before it plays. */
+    private fun matchSurface(link: ExtractorLink) {
+        val l = layout ?: return
+        val want = io.github.sherazi5110.cloudstream.Picture.useHdrSurface(link, screenHdr)
+        if (want == hdrSurface) return
+        player.detachViews()
+        hdrSurface = want
+        player.attachViews(l, null, true, !want)
+        player.videoScale = zoom.scale
+    }
+
+    fun detach() { player.detachViews(); layout = null }
 
     /** Records progress for Continue Watching and the episode list. */
     fun save(finished: Boolean = false) {

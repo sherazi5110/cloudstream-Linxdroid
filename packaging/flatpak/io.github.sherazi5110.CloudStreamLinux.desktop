@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=CloudStream
+Name=Stream Goat
 GenericName=Media Center
-Comment=Run CloudStream extensions on Linux
+Comment=Movies, series, anime and Live TV from CloudStream extensions
 Exec=cloudstream-linux %u
 Icon=io.github.sherazi5110.CloudStreamLinux
 Terminal=false

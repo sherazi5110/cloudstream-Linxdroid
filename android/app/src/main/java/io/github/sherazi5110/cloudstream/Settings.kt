@@ -184,4 +184,14 @@ object Settings {
     var parallelDownloads: Int
         get() = string("parallel_downloads", "2").toIntOrNull()?.coerceIn(1, 5) ?: 2
         set(v) = put("parallel_downloads", v.coerceIn(1, 5))
+
+    /** The short animated intro when the app opens. */
+    var startupAnimation: Boolean
+        get() = string("startup_animation", "true").toBoolean()
+        set(v) = put("startup_animation", v)
+
+    /** HDR video on HDR screens: AUTO (HDR sources), ON (always the HDR-capable surface), OFF. */
+    var hdrOutput: String
+        get() = string("hdr_output", "AUTO")
+        set(v) = put("hdr_output", v)
 }

@@ -105,7 +105,7 @@ import java.text.DateFormat
 import java.util.Date
 import kotlin.math.abs
 
-private enum class Sheet(val title: String) { SOURCES("Sources"), SUBTITLES("Subtitles"), ONLINE("Online subtitles"), AUDIO("Audio"), SPEED("Speed"), ZOOM("Zoom") }
+private enum class Sheet(val title: String) { SOURCES("Sources"), SUBTITLES("Subtitles"), ONLINE("Online subtitles"), TRANSLATE("Translate subtitles"), AUDIO("Audio"), SPEED("Speed"), ZOOM("Zoom") }
 
 fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -229,7 +229,7 @@ fun PlayerScreen(screen: Screen.Player) {
             AndroidView(
                 factory = { ctx -> VLCVideoLayout(ctx).also { c.attach(it) } },
                 onRelease = { c.detach() },
-                modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = pinch, scaleY = pinch),
+                modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = if (c.hdrSurface) 1f else pinch, scaleY = if (c.hdrSurface) 1f else pinch),
             )
         }
 
@@ -504,7 +504,12 @@ private fun SheetPanel(sheet: Sheet, c: PlayerController, modifier: Modifier, on
                 add(Option("Off", null, currentSpu == -1 && c.selectedSubtitle == null) { c.setSpu(-1); onClose() })
                 spu.filter { it.id != -1 }.forEach { t -> add(Option(t.name, "In the video", t.id == currentSpu && c.selectedSubtitle == null) { c.setSpu(t.id); onClose() }) }
                 c.subtitles.forEach { s -> add(Option(s.lang, "From ${c.api.name}", s.url == c.selectedSubtitle) { c.addSubtitle(s); onClose() }) }
+                c.addedFiles.forEach { (f, name) -> add(Option(name, if ("→" in name) "Translated" else "Online", f.absolutePath == c.selectedSubtitle) { c.selectFile(f); onClose() }) }
                 if (!c.isLive) add(Option("Search online…", "OpenSubtitles, no account", false) { onOpen(Sheet.ONLINE) })
+                if (c.translateSourceName() != null) add(Option("Translate subtitles to…", c.translating?.let { "Translating to $it…" } ?: "Hindi, Urdu, Chinese, French and more", false) { onOpen(Sheet.TRANSLATE) })
+            }
+            Sheet.TRANSLATE -> io.github.sherazi5110.cloudstream.SubtitleTranslator.languages.map { (code, name) ->
+                Option(name, if (code == io.github.sherazi5110.cloudstream.SubtitleTranslator.languages.first().first) "From: ${c.translateSourceName()}" else null, false) { c.translateSubtitles(code); onClose() }
             }
             Sheet.ONLINE -> online.orEmpty().map { r ->
                 Option(r.languageName, r.id, false) {
