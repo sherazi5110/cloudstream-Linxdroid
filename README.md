@@ -1,11 +1,11 @@
 # Stream Goat
 
-<p align="center"><img src="packaging/linux/cloudstream-linux.png" width="128" alt="Stream Goat logo: a mountain goat on snowy peaks"></p>
+<p align="center"><img src="packaging/linux/cloudstream-linux.png" width="128" alt="Stream Goat logo: a goat chewing grass in front of a rainbow circle"></p>
 
 <p align="center"><b>Movies, series, anime and Live TV on Windows, Linux, Android phones and Android TV.</b><br>
 Created by <b>Syed Ali Hamza</b></p>
 
-![Stream Goat's startup intro](docs/screenshots/intro.png)
+![Stream Goat's start animation: the goat chewing its grass under an arc of stars](docs/screenshots/intro.png)
 
 Stream Goat runs **CloudStream extensions and Stremio add-ons**, from the same repositories the official CloudStream
 Android app uses, with no changes to the extensions. *(Formerly "CloudStream for Linux"; your extensions, profiles,
@@ -52,11 +52,33 @@ The `.deb` and Flatpak bring everything they need (VLC is installed with the `.d
 `cloudstream-linux`, so a new `.deb` updates an older install. Run it as **Stream Goat** from your app menu, or
 `streamgoat` in a terminal. [More: INSTALL.md → Linux](INSTALL.md)
 
-## New in 7.2: Stream Goat
+## New in 8.0: the big update
 
-- **New name, logo and startup intro.** A mountain goat on snowy peaks; peaks rise out of a night sky, an arc of stars
-  sweeps over the summit and the goat appears (about 3 seconds, any key or tap skips it; Settings → Appearance turns
-  it off). Settings → About: *Created by Syed Ali Hamza*.
+- **A new look, drawn by Syed Ali Hamza.** The rainbow goat is the logo and the app icon everywhere (Windows, Linux,
+  Android, Android TV, the website). The start animation is the goat chewing its grass under an arc of stars (about
+  3 seconds; any key or tap skips it). With no internet, Home, Search and Live TV show the goat's *offline* pictures
+  with *Try again* and a way to your downloads. Settings → Appearance → **Logo**: the artwork's rainbow, or your theme
+  colour (the circle and the goat's inner ears follow the accent colour).
+- **Live TV: YouTube, Twitch and Dailymotion channels play.** Playlists such as Free-TV list about 130 channels as a
+  YouTube, Twitch or Dailymotion channel instead of a stream. On Android and Android TV they play full screen inside
+  the app, in that service's own embed player (CH+ / CH− still change channel); on Windows and Linux in the same
+  official player, in a window of its own. Channels marked as only playing in their own country show *Region-locked*.
+- **Live TV: a channel that doesn't play says why** after about 12 seconds: an expired security certificate, a server
+  that isn't answering, an address that's gone, or a region lock. Settings → Live TV → **Retry without encryption**
+  (off by default) tries a broken playlist channel over plain http.
+- **Android TV:** nothing is cut off under the top bar any more, title pages open at the top, and the start animation
+  fits the screen and always opens the app.
+- **More extensions on Windows and Linux:** Jetpack Compose extensions (MovieBoxProvider and about 20 others), Gson
+  (HiAnime, StreamPlay, ShowBox…), CloudflareKiller and WebView cookies, and repository 759 (Eclipsia, LiveSports).
+- **40 new profile pictures:** 15 goats (nine colours, a king, a DJ, a cap, a cowboy, a professor, a party goat) and
+  25 animals. Android: typing in Search works again.
+
+| | |
+|---|---|
+| ![Settings → Appearance → Logo: rainbow or theme colour](docs/screenshots/settings-logo.png) | ![The offline goat](docs/screenshots/offline.png) |
+
+## New in 7.2
+
 - **Search suggestions** drop down as you type a title, like the official app (TMDB with your key, otherwise
   Cinemeta). Desktop, Android and the web version.
 - **Translate subtitles** into 24 languages (English, Hindi, Urdu, Chinese, Spanish, French, Arabic, Bengali,
@@ -93,10 +115,10 @@ The `.deb` and Flatpak bring everything they need (VLC is installed with the `.d
     one (or *No match*).
   - The Flatpak moves to the Freedesktop **25.08** runtime.
 - **New look (6.0):** a slim icon rail, a clean top bar (source picker, search, your profile) and a full-width featured banner with backdrop, rating, "#1 in …", plot, *Play* and *More Info*. 
-- **Live TV (6.0.1):** a Live TV page of its own (below Home in the rail) for IPTV: **M3U playlists with XMLTV guides**, **Xtream Codes** logins, and **Stremio / Nuvio TV add-ons** (add-ons with TV channel catalogs move here automatically) and playlist files. Channel logos come from the playlist, or from the open iptv-org database when missing. What's on now and next, categories from the playlist's groups, favourites, recently watched, channel search and a country filter. Live TV sources never appear on Home.
+- **Live TV (6.0.1):** a Live TV page of its own (below Home in the rail) for IPTV: **M3U playlists with XMLTV guides**, **Xtream Codes** logins, and **Stremio / Nuvio TV add-ons** (add-ons with TV channel catalogs move here automatically) and playlist files. YouTube, Twitch and Dailymotion channels play in their own official player (8.0). Channel logos come from the playlist, or from the open iptv-org database when missing. What's on now and next, categories from the playlist's groups, favourites, recently watched, channel search and a country filter. Live TV sources never appear on Home.
 - **Metadata & integrations (6.0.1):** add your free **TMDB** API key for ratings on posters, wide backdrops and title logos, cast with photos, trailers and similar titles on every extension; **IMDb ratings via Cinemeta** and **AniList** scores for anime need no key.
 - **Watched controls (6.0.1):** mark films and episodes as watched (or not), and remove titles from Continue Watching, right from the card, My list, history or the title page.
-- **Profiles:** "Who's watching?", twelve built-in avatars in eight colours (or your own picture), an optional PIN, and each profile's own history, list, home layout, theme and player settings.
+- **Profiles:** "Who's watching?", 40 profile pictures (goats and animals), twelve characters in eight colours (or your own picture), an optional PIN, and each profile's own history, list, home layout, theme and player settings.
 - **Adult content (6.0.1):** like the Android app, NSFW extensions and titles are hidden until you turn on *Show adult (NSFW) content* in Settings → Profiles (per profile, confirmed, parent PIN if set; never in kids profiles).
 - **Kids profiles:** only the extensions you allow (NSFW never), chosen types (e.g. cartoons and anime), a maximum age rating and blocked words; no Settings or Extensions pages, and a PIN keeps grown-up profiles locked.
 - **Stremio add-ons:** install any add-on by its manifest address (or `stremio://` link). Its catalogs appear on Home, in Search and in the catalog editor; details come from the add-on or Cinemeta; streams from every add-on that has them play in the built-in player (torrent-only add-ons aren't supported).
@@ -158,6 +180,7 @@ before any extensions are added); on landscape tablets and TV the app uses the d
 | | |
 |---|---|
 | ![Tablet and TV: Home with the icon rail](docs/android/tablet-home.png) | ![Tablet and TV: Settings](docs/android/tablet-settings.png) |
+| ![Android TV: Home on a 1080p TV, the whole banner in view](docs/android/tv-home.png) | ![The 40 profile pictures](docs/android/profile-pictures.png) |
 
 **Layouts**
 - **Phone and tablet (touch):** a swipeable featured banner, Continue Watching, catalog rows, and a bottom bar
