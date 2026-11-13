@@ -15,4 +15,6 @@ kotlin {
 
 dependencies {
     api(project(":cs-library"))
+    // The official Android app ships Gson, and extensions use it to read JSON (HiAnime, StreamPlay, ShowBox…).
+    api("com.google.code.gson:gson:2.11.0")
 }

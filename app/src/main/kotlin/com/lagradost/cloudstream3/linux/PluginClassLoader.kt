@@ -58,10 +58,16 @@ class PluginClassLoader(val jar: File, val original: File) :
         PluginClassLoader::class.java.classLoader
     ) {
 
-    override fun findClass(name: String): Class<*> = try {
-        super.findClass(name)
-    } catch (e: ClassNotFoundException) {
-        AndroidStubLoader.loadClass(name)
+    override fun findClass(name: String): Class<*> {
+        val path = name.replace('.', '/') + ".class"
+        val bytes = findResource(path)?.openStream()?.use { it.readBytes() }
+            ?: return try { super.findClass(name) } catch (e: ClassNotFoundException) { AndroidStubLoader.loadClass(name) }
+        // Most classes load as they are; only ones that read Compose's $stable fields are patched.
+        if (!ComposeStable.mentions(bytes)) return super.findClass(name)
+        val patched = ComposeStable.patch(bytes) { owner -> findResource("$owner.class") != null }
+        val pkg = name.substringBeforeLast('.', "")
+        if (pkg.isNotEmpty() && getDefinedPackage(pkg) == null) runCatching { definePackage(pkg, null, null, null, null, null, null, null) }
+        return defineClass(name, patched, 0, patched.size, java.security.CodeSource(jar.toURI().toURL(), null as Array<java.security.CodeSigner>?))
     }
 
     /** Same detection the gradle plugin's CompileDexTask uses to write manifest.json. */
@@ -74,5 +80,41 @@ class PluginClassLoader(val jar: File, val original: File) :
                 annotations.any { a -> a.desc == "Lcom/lagradost/cloudstream3/plugins/CloudstreamPlugin;" }
             }
         }
+    }
+}
+
+/**
+ * Extensions built with Jetpack Compose read a hidden `$stable` field (Compose's stability flags) from the classes
+ * they extend, e.g. `Plugin.$stable`. Stream Goat's own Plugin/MainAPI on the desktop are not built with Compose and
+ * have no such field, so those extensions failed to load ("does not have member field 'int $stable'"). Reading
+ * `$stable` from a class that isn't the extension's own becomes the constant 0 ("stable"), which is all Compose
+ * would use it for; Compose never runs here.
+ */
+object ComposeStable {
+    private val marker = "\$stable".toByteArray()
+
+    fun mentions(bytes: ByteArray): Boolean {
+        outer@ for (i in 0..bytes.size - marker.size) {
+            for (j in marker.indices) if (bytes[i + j] != marker[j]) continue@outer
+            return true
+        }
+        return false
+    }
+
+    /** [own] says whether a class (internal name) belongs to the extension itself. */
+    fun patch(bytes: ByteArray, own: (String) -> Boolean): ByteArray {
+        val reader = ClassReader(bytes)
+        val writer = ClassWriter(reader, 0)
+        reader.accept(object : org.objectweb.asm.ClassVisitor(Opcodes.ASM9, writer) {
+            override fun visitMethod(access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?) =
+                object : org.objectweb.asm.MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
+                    override fun visitFieldInsn(opcode: Int, owner: String, fieldName: String, fieldDescriptor: String) {
+                        if (opcode == Opcodes.GETSTATIC && fieldName == "\$stable" && fieldDescriptor == "I" && !own(owner)) {
+                            super.visitInsn(Opcodes.ICONST_0)
+                        } else super.visitFieldInsn(opcode, owner, fieldName, fieldDescriptor)
+                    }
+                }
+        }, 0)
+        return writer.toByteArray()
     }
 }

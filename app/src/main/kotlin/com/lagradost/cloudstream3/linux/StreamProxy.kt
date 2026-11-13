@@ -35,10 +35,36 @@ object StreamProxy {
     @Synchronized
     private fun start(): HttpServer = server ?: HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 64).also {
         it.createContext("/s/") { exchange -> handle(exchange) }
+        it.createContext("/web/") { exchange ->
+            exchange.use {
+                val page = pages[exchange.requestURI.path.removePrefix("/web/").substringBefore('/')]
+                if (page == null) { exchange.sendResponseHeaders(404, -1); return@use }
+                val bytes = page.toByteArray()
+                exchange.responseHeaders.add("Content-Type", "text/html; charset=utf-8")
+                exchange.responseHeaders.add("Referrer-Policy", "strict-origin-when-cross-origin")
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.write(bytes)
+            }
+        }
         // Players open several connections at once (playlist, segments, a seek).
         it.executor = Executors.newCachedThreadPool { r -> Thread(r, "stream-proxy").apply { isDaemon = true } }
         it.start()
         server = it
+    }
+
+    private val pages = ConcurrentHashMap<String, String>()
+
+    /**
+     * Serves a web page made by [make] (given the page's origin, http://localhost:<port>) and returns its address.
+     * Live TV's YouTube/Twitch players: Twitch only plays in a page whose host is its `parent` (localhost is allowed).
+     */
+    fun page(make: (origin: String) -> String?): String? {
+        val s = start()
+        val origin = "http://localhost:${s.address.port}"
+        val html = make(origin) ?: return null
+        val id = MessageDigest.getInstance("SHA-256").digest(html.toByteArray()).take(8).joinToString("") { "%02x".format(it) }
+        pages[id] = html
+        return "$origin/web/$id"
     }
 
     /** Returns a loopback URL that fetches [url] with [headers]. */

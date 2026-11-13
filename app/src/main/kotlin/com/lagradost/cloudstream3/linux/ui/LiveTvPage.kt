@@ -4,6 +4,7 @@ import com.lagradost.cloudstream3.linux.ChannelLogos
 import com.lagradost.cloudstream3.linux.Engine
 import com.lagradost.cloudstream3.linux.LiveApi
 import com.lagradost.cloudstream3.linux.LiveTv
+import com.lagradost.cloudstream3.linux.Os
 import com.lagradost.cloudstream3.linux.StremioAddons
 import com.lagradost.cloudstream3.linux.StremioApi
 import javafx.geometry.Pos
@@ -33,6 +34,7 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
     private var country: String? = null
     private var group: String? = ALL
     private var loading = false
+    private var offline = false
     private var job: Job? = null
     private val heroHolder = StackPane().apply { minWidth = 0.0 }
     private val chips = ChipGroup { i -> group = chipKeys.getOrNull(i); renderBody() }
@@ -94,6 +96,7 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
         renderBody()
         job = ui.launch {
             all = LiveTv.channels(sourceId, force)
+            offline = all.isEmpty() && LiveTv.sources().any { it.enabled } && !com.lagradost.cloudstream3.linux.Network.online()
             loading = false
             val countries = all.mapNotNull { it.country }.distinct()
             countryButton.isVisible = countries.size > 1; countryButton.isManaged = countryButton.isVisible
@@ -252,6 +255,11 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
                 show(hbox(10.0, ProgressIndicator().apply { setPrefSize(22.0, 22.0) }, label("Loading channels…", "muted")))
                 return
             }
+            list.isEmpty() && offline -> {
+                chips.isVisible = false
+                show(offlineState { reload(force = true) })
+                return
+            }
             list.isEmpty() -> {
                 chips.isVisible = false
                 show(emptyState(Icons.INFO, "No channels",
@@ -318,8 +326,14 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
             setMinSize(w, 124.0); setMaxSize(w, 124.0)
             style = "-fx-background-color: linear-gradient(to bottom right, ${colorFor(c.name)}cc, #120a22);"
         }
-        val live = label("● LIVE", "live-badge").also { StackPane.setAlignment(it, Pos.TOP_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0)) }
+        val web = LiveTv.webPage(c)
+        val live = label(web?.let { "● LIVE · ${it.uppercase()}" } ?: "● LIVE", "live-badge").also { StackPane.setAlignment(it, Pos.TOP_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0)) }
+        if (web != null) live.tooltip("A $web channel: plays in $web's own player")
         pic.children += live
+        if (c.regionLocked) pic.children += label("Region-locked", "badge").also {
+            StackPane.setAlignment(it, Pos.BOTTOM_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0))
+            it.tooltip("The playlist says this channel only plays in its own country")
+        }
         if (c.number > 0) pic.children += label("${c.number}", "badge").also { StackPane.setAlignment(it, Pos.TOP_RIGHT); StackPane.setMargin(it, javafx.geometry.Insets(8.0)) }
         val star = StackPane(icon(if (fav) Icons.STAR else Icons.STAR_OUTLINE, 18.0)).apply {
             styleClass += "channel-star"
@@ -377,6 +391,21 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
 
     private fun play(c: LiveTv.Channel) {
         LiveTv.watched(c)
+        // A YouTube, Twitch or Dailymotion channel: that service's own player, in a window of its own (the app's
+        // web view can't play their streams). A YouTube channel given by name opens its live page.
+        LiveTv.webEmbed(c)?.let { e ->
+            val url = if (e.kind == "youtube-page") c.url else com.lagradost.cloudstream3.linux.StreamProxy.page { origin -> LiveTv.embedHtml(e, origin) }
+            if (url != null && Os.openAppWindow(url)) {
+                Toasts.show("Playing ${c.name} in ${e.service}'s player (its own window)")
+                return
+            }
+        }
+        // Anything else that's a web page: its site can open it.
+        LiveTv.webPage(c)?.let { service ->
+            if (Os.open(c.url)) Toasts.show("Opening ${c.name} on $service in your browser")
+            else Toasts.show("Couldn't open ${c.name}: ${c.url}")
+            return
+        }
         ui.launch {
             try {
                 if (c.source.startsWith("stremio:")) {

@@ -11,6 +11,7 @@ import okhttp3.Dispatcher
 import okhttp3.Dns
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -39,7 +40,37 @@ object Network {
         private set
     val cookies by lazy { PersistentCookieJar(File(AppDirs.data, "network/cookies.json")) }
 
+    /** Extensions' android.webkit.CookieManager reads and writes the same cookie store as the app's requests. */
+    private val webCookies = object : android.webkit.CookieManager.Backend {
+        override fun getCookie(url: String): String? = url.toHttpUrlOrNull()?.let { u ->
+            cookies.loadForRequest(u).joinToString("; ") { "${it.name}=${it.value}" }
+        }
+        override fun setCookie(url: String, value: String) {
+            val u = url.toHttpUrlOrNull() ?: return
+            okhttp3.Cookie.parse(u, value)?.let { cookies.saveFromResponse(u, listOf(it)) }
+        }
+        override fun removeAll() = cookies.clear()
+    }
+
+    /**
+     * Whether the internet can be reached: a network is connected and a well-known address answers (any answer
+     * counts). Asked only after something failed to load, to tell "you're offline" from "that site is down".
+     */
+    suspend fun online(): Boolean = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val connected = runCatching {
+            java.net.NetworkInterface.getNetworkInterfaces().asSequence().any { it.isUp && !it.isLoopback && it.interfaceAddresses.isNotEmpty() }
+        }.getOrDefault(true)
+        if (!connected) return@withContext false
+        val probes = System.getProperty("cs.online.check")?.let { listOf(it) }
+            ?: listOf("https://www.gstatic.com/generate_204", "https://one.one.one.one/")
+        val quick = client.newBuilder().callTimeout(6, TimeUnit.SECONDS).build()
+        probes.any { url ->
+            runCatching { quick.newCall(okhttp3.Request.Builder().url(url).head().build()).execute().use { true } }.getOrDefault(false)
+        }
+    }
+
     fun init() {
+        android.webkit.CookieManager.backend = webCookies
         val cache = Cache(File(Platform.context.getCacheDir(), "http_cache"), 100L * 1024 * 1024)
         val dispatcher = Dispatcher().apply {
             maxRequests = 128

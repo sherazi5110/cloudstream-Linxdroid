@@ -113,10 +113,6 @@ fun NetImage(
         modifier = if (placeholder) modifier.background(Palette.surfaceHigh) else modifier)
 }
 
-@Composable
-fun Logo(size: Dp = 36.dp) {
-    Image(painterResource(R.drawable.logo), contentDescription = "Stream Goat", modifier = Modifier.size(size))
-}
 
 /** "★ 7.9" in a dark chip, for posters. */
 @Composable

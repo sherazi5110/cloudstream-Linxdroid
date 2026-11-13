@@ -128,6 +128,90 @@ class LiveTvMetadataTest {
     }
 
     @Test
+    fun `a channel that doesn't play says why, and the opt-in plain-http retry`() = runBlocking {
+        // The reason, from one request to the channel's address.
+        val token = mapOf("X-CS-Token" to "demo")
+        assertEquals(null, LiveTv.diagnose("$base/hls/master.m3u8", token))
+        assertTrue("refused to send it (HTTP 403)" in LiveTv.diagnose("$base/hls/master.m3u8").orEmpty())
+        assertTrue("no longer exists (HTTP 404)" in LiveTv.diagnose("$base/no-such-channel.m3u8").orEmpty())
+        assertEquals("its server's address no longer exists", LiveTv.diagnose("http://channel.invalid/live.m3u8"))
+        val closed = java.net.ServerSocket(0).use { it.localPort }
+        assertEquals("its server refuses connections", LiveTv.diagnose("http://127.0.0.1:$closed/live.m3u8"))
+        val msg = LiveTv.failureMessage("Cine.AR", "$base/no-such-channel.m3u8")
+        assertTrue(msg.startsWith("Cine.AR can't play: its stream address no longer exists"), msg)
+        assertTrue("off the air" in LiveTv.failureMessage("Alpo TV", "$base/hls/master.m3u8", token))
+
+        // Retry without encryption: off by default; then a second, http link for https playlist channels only.
+        val (source, _) = LiveTv.add(LiveTv.Kind.M3U, "$base/iptv/playlist.m3u", "Test IPTV")
+        val secure = LiveTv.Channel("k", source.id, "Cine.AR", null, null, "https://tv.example/live/cinear/playlist.m3u8")
+        suspend fun links(c: LiveTv.Channel) = mutableListOf<com.lagradost.cloudstream3.utils.ExtractorLink>().also { out ->
+            LiveApi.loadLinks(LiveApi.data(c), false, {}) { out += it }
+        }
+        assertFalse(LiveTv.retryPlain)
+        assertEquals(1, links(secure).size)
+        LiveTv.retryPlain = true
+        try {
+            val both = links(secure)
+            assertEquals(listOf("https://tv.example/live/cinear/playlist.m3u8", "http://tv.example/live/cinear/playlist.m3u8"), both.map { it.url })
+            assertEquals(LiveApi.PLAIN, both[1].name)
+            // Not for addresses that are already http, nor channels from logins (Xtream addresses carry the password).
+            assertEquals(1, links(secure.copy(url = "http://tv.example/a.m3u8")).size)
+            assertEquals(1, links(secure.copy(source = "xtream-login")).size)
+        } finally {
+            LiveTv.retryPlain = false
+        }
+        Unit
+    }
+
+    @Test
+    fun `Free-TV style playlists - marks become tags, YouTube and Twitch channels open on their sites`() = runBlocking {
+        // As in github.com/Free-TV/IPTV: Ⓢ SD, Ⓖ region-locked, Ⓨ YouTube, Ⓣ Twitch.
+        val list = LiveTv.parseM3u("free", """
+            #EXTM3U x-tvg-url="https://epg.example/a.xml.gz, https://epg.example/b.xml.gz"
+            #EXTINF:-1 tvg-name="Kanali 7" tvg-id="Kanali7.al" tvg-country="AL" group-title="Albania",Kanali 7 Ⓢ
+            https://fe.example/delta/105/out/u/1200_1.m3u8
+            #EXTINF:-1 tvg-name="SBS" tvg-chno="5" group-title="Australia",SBS Ⓖ
+            https://i.example/.r/sbs.m3u8
+            #EXTINF:-1 tvg-name="ABC News Albania" group-title="Albania",ABC News Albania Ⓣ
+            https://www.twitch.tv/abcnewsal
+            #EXTINF:-1 tvg-name="Euronews Albania" group-title="Albania",Euronews Albania Ⓨ
+            https://www.youtube.com/@EuronewsAlbania/live
+            #EXTINF:-1 group-title="France",France 24 Ⓨ Ⓖ
+            https://youtu.be/abc
+        """.trimIndent())
+        assertEquals(listOf("Kanali 7", "SBS", "ABC News Albania", "Euronews Albania", "France 24"), list.map { it.name })
+        assertEquals(listOf(false, true, false, false, true), list.map { it.regionLocked })
+        assertEquals(listOf(null, null, "Twitch", "YouTube", "YouTube"), list.map { LiveTv.webPage(it) })
+        assertEquals(5, list[1].number)
+
+        // They play in the service's own embed player: which one, for each kind of address.
+        fun embed(url: String) = LiveTv.webEmbed(LiveTv.Channel("k", "s", "n", null, null, url))
+        assertEquals(LiveTv.WebEmbed("Twitch", "twitch", "abcnewsal"), embed("https://www.twitch.tv/abcnewsal"))
+        assertEquals(LiveTv.WebEmbed("YouTube", "youtube-video", "ABVQXgr2LW4"), embed("https://www.youtube.com/watch?v=ABVQXgr2LW4"))
+        assertEquals(LiveTv.WebEmbed("YouTube", "youtube-video", "ABVQXgr2LW4"), embed("https://youtu.be/ABVQXgr2LW4"))
+        assertEquals(LiveTv.WebEmbed("YouTube", "youtube-channel", "UC6YundoLrEuBJaPp_oEPWaA"), embed("https://www.youtube.com/channel/UC6YundoLrEuBJaPp_oEPWaA/live"))
+        assertEquals("youtube-page", embed("https://www.youtube.com/@EuronewsAlbania/live")?.kind)
+        assertEquals("youtube-page", embed("https://www.youtube.com/c/todonoticias/live")?.kind)
+        assertEquals(LiveTv.WebEmbed("Dailymotion", "dailymotion", "x3b68jn"), embed("https://www.dailymotion.com/video/x3b68jn"))
+        assertNull(embed("https://cdn.example/live.m3u8"))
+        // A channel page's live video, from its canonical link; else its channel id.
+        assertEquals("youtube-video", LiveTv.youtubeLiveVideo("\"https://m.youtube.com/@x/live https://www.youtube.com/watch?v=ABVQXgr2LW4\"")?.kind)
+        assertEquals("youtube-channel", LiveTv.youtubeLiveVideo("https://www.youtube.com/channel/UC6YundoLrEuBJaPp_oEPWaA")?.kind)
+        assertNull(LiveTv.youtubeLiveVideo("https://www.youtube.com/@x/live"))
+        // The page: Twitch's parent is the page's host; YouTube gets the page's origin and reports errors.
+        val twitch = LiveTv.embedHtml(LiveTv.WebEmbed("Twitch", "twitch", "abcnewsal"), "https://sherazi5110.github.io")!!
+        assertTrue("player.twitch.tv/?channel=abcnewsal&parent=sherazi5110.github.io" in twitch, twitch)
+        val yt = LiveTv.embedHtml(LiveTv.WebEmbed("YouTube", "youtube-channel", "UC6YundoLrEuBJaPp_oEPWaA"), "http://localhost:4242")!!
+        assertTrue("embed/live_stream?channel=UC6YundoLrEuBJaPp_oEPWaA" in yt && "origin=http%3A%2F%2Flocalhost%3A4242" in yt && "StreamGoat.error" in yt, yt)
+        // Desktop serves the page itself, at a localhost address.
+        val url = StreamProxy.page { origin -> LiveTv.embedHtml(LiveTv.WebEmbed("Twitch", "twitch", "abcnewsal"), origin) }!!
+        assertTrue(url.startsWith("http://localhost:"), url)
+        val served = java.net.URI(url.replace("localhost", "127.0.0.1")).toURL().readText()
+        assertTrue("parent=localhost" in served, served)
+        Unit
+    }
+
+    @Test
     fun `Xtream logins and Stremio TV add-ons go to Live TV only`() = runBlocking {
         val bad = runCatching { LiveTv.add(LiveTv.Kind.XTREAM, "$base/xtream", null, null, "demo", "wrong") }
         assertTrue(bad.isFailure)

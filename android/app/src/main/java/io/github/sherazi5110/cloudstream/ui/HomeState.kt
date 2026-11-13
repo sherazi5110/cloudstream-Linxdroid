@@ -26,6 +26,8 @@ class HomeState {
     var api by mutableStateOf<MainAPI?>(null)
     val sections = mutableStateListOf<Engine.HomeSection>()
     var loading by mutableStateOf(false)
+    /** The catalogs came back empty because there's no internet connection. */
+    var offline by mutableStateOf(false)
     var continueWatching by mutableStateOf<List<WatchEntry>>(emptyList())
     /** Bumped when the user edits catalogs, so Home reloads. */
     var catalogVersion by mutableStateOf(0)
@@ -59,11 +61,13 @@ fun rememberHomeState(): HomeState {
         state.sections.clear()
         val api = state.api ?: return@LaunchedEffect
         state.loading = true
+        state.offline = false
         Engine.home(listOf(api)).collect { section ->
             val i = state.sections.indexOfFirst { it.order > section.order }.let { if (it == -1) state.sections.size else it }
             state.sections.add(i, section)
         }
         state.loading = false
+        state.offline = state.sections.isEmpty() && !io.github.sherazi5110.cloudstream.App.online()
     }
     DisposableEffect(Unit) {
         state.continueWatching = Library.continueWatching()

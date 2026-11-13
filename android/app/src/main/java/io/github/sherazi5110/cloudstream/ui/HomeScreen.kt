@@ -1,5 +1,7 @@
 package io.github.sherazi5110.cloudstream.ui
 
+import kotlinx.coroutines.launch
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -111,6 +114,7 @@ private fun PhoneHome(state: HomeState) {
             CatalogRow(section, posterWidth = 112.dp)
         }
         if (state.loading && state.sections.isEmpty()) item { Spinner(Modifier.fillMaxWidth().height(200.dp)) }
+        if (state.offline && state.sections.isEmpty()) item { OfflineState(Modifier.fillMaxWidth()) { state.catalogVersion++ } }
     }
 }
 
@@ -282,13 +286,23 @@ fun CatalogRow(
  * The banner slides by itself and can be swiped; on TV it follows the focused card.
  */
 @Composable
-private fun WideHome(state: HomeState) {
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+internal fun WideHome(state: HomeState) {
     var focused by remember { mutableStateOf<SearchResponse?>(null) }
     val list = rememberLazyListState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bannerHeight = (maxHeight * 0.74f).coerceIn(340.dp, 640.dp)
+        val scope = rememberCoroutineScope()
+        // On a TV, Compose scrolls a list so the focused item sits a third of the way down (the TV "pivot"). With the
+        // remote on the banner's Play button that pushed the banner's top (logo, title) up under the top bar. Here
+        // the list only scrolls as far as needed, and the banner always shows whole when it has the focus.
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides MinimalScroll) {
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 32.dp)) {
-            item(key = "banner") { WideBanner(state, focused, bannerHeight) }
+            item(key = "banner") {
+                Box(Modifier.onFocusChanged { f ->
+                    if (f.hasFocus && (list.firstVisibleItemIndex != 0 || list.firstVisibleItemScrollOffset != 0)) scope.launch { list.animateScrollToItem(0) }
+                }) { WideBanner(state, focused, bannerHeight) }
+            }
             if (state.continueWatching.isNotEmpty()) item(key = "continue") {
                 ContinueRow(state.continueWatching, 280.dp)
             }
@@ -296,6 +310,8 @@ private fun WideHome(state: HomeState) {
                 CatalogRow(section, 140.dp, onFocus = if (isTv) { item -> focused = item } else null)
             }
             if (state.loading && state.sections.isEmpty()) item { Spinner(Modifier.fillMaxWidth().height(200.dp)) }
+            if (state.offline && state.sections.isEmpty()) item { OfflineState(Modifier.fillMaxWidth()) { state.catalogVersion++ } }
+        }
         }
         // Fixed top bar; it gets a backdrop once the banner has scrolled away.
         val scrolled = list.firstVisibleItemIndex > 0
@@ -322,10 +338,12 @@ private fun WideBanner(state: HomeState, focused: SearchResponse?, height: andro
         }
     }
     val rowName = state.sections.firstOrNull()?.list?.name
-    Box(Modifier.fillMaxWidth().height(height)) {
-        if (featured.isEmpty()) Box(Modifier.fillMaxSize().background(Palette.surface))
-        else if (focused != null) BannerPage(focused, featured.indexOfFirst { it.url == focused.url }.takeIf { it >= 0 }, rowName)
-        else HorizontalPager(pager, Modifier.fillMaxSize()) { page -> BannerPage(featured[page], page, rowName) }
+    // At least [height] tall, taller when the title, plot and buttons need it: on a short screen (a 1080p TV is
+    // only 540 units tall to the app) the text used to run off the top of the banner, under the top bar.
+    Box(Modifier.fillMaxWidth().heightIn(min = height)) {
+        if (featured.isEmpty()) Box(Modifier.fillMaxWidth().height(height).background(Palette.surface))
+        else if (focused != null) BannerPage(focused, featured.indexOfFirst { it.url == focused.url }.takeIf { it >= 0 }, rowName, height)
+        else HorizontalPager(pager, Modifier.fillMaxWidth()) { page -> BannerPage(featured[page], page, rowName, height) }
         if (featured.size > 1 && focused == null) Row(
             Modifier.align(Alignment.BottomEnd).padding(end = 40.dp, bottom = 28.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -340,27 +358,29 @@ private fun WideBanner(state: HomeState, focused: SearchResponse?, height: andro
 }
 
 @Composable
-private fun BannerPage(item: SearchResponse, rank: Int?, rowName: String?) {
+private fun BannerPage(item: SearchResponse, rank: Int?, rowName: String?, height: androidx.compose.ui.unit.Dp) {
+    val compact = height < 460.dp
     val details = rememberDetails(item.apiName, item.url)
     val info = rememberMetadata(details)
     val art = io.github.sherazi5110.cloudstream.Metadata.artwork
     val scope = rememberCoroutineScope()
     val playFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (isTv && rank == 0) runCatching { playFocus.requestFocus() } }
-    Box(Modifier.fillMaxSize()) {
-        NetImage(info?.backdrop?.takeIf { art } ?: details?.backgroundPosterUrl ?: details?.posterUrl ?: item.posterUrl, Modifier.fillMaxSize(),
+    Box(Modifier.fillMaxWidth().heightIn(min = height)) {
+        NetImage(info?.backdrop?.takeIf { art } ?: details?.backgroundPosterUrl ?: details?.posterUrl ?: item.posterUrl, Modifier.matchParentSize(),
             details?.posterHeaders ?: item.posterHeaders)
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
+        Box(Modifier.matchParentSize().background(Brush.horizontalGradient(
             0f to Palette.background.copy(alpha = 0.95f), 0.45f to Palette.background.copy(alpha = 0.55f), 0.75f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(
             0f to Color.Black.copy(alpha = 0.45f), 0.2f to Color.Transparent, 0.6f to Color.Transparent, 1f to Palette.background)))
-        Column(Modifier.align(Alignment.BottomStart).padding(start = 40.dp, bottom = 28.dp).widthIn(max = 560.dp)) {
+        // The top padding keeps the text clear of the top bar (extension picker, search, profile).
+        Column(Modifier.align(Alignment.BottomStart).padding(start = 40.dp, top = 76.dp, bottom = if (compact) 20.dp else 28.dp).widthIn(max = 560.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Logo(18.dp)
                 Text(item.apiName.uppercase(), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 8.dp))
             }
             val logo = details?.logoUrl ?: info?.logo?.takeIf { art }
-            if (logo != null) NetImage(logo, Modifier.padding(vertical = 12.dp).height(96.dp).widthIn(max = 460.dp).fillMaxWidth(),
+            if (logo != null) NetImage(logo, Modifier.padding(vertical = if (compact) 8.dp else 12.dp).height(if (compact) 64.dp else 96.dp).widthIn(max = 460.dp).fillMaxWidth(),
                 contentScale = ContentScale.Fit, alignment = Alignment.CenterStart, placeholder = false)
             else Text(item.name, style = MaterialTheme.typography.displayLarge, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(vertical = 10.dp))
@@ -370,9 +390,9 @@ private fun BannerPage(item: SearchResponse, rank: Int?, rowName: String?) {
                 Text("#${rank + 1} in $rowName", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 8.dp))
             }
             (details?.plot?.takeIf { it.isNotBlank() } ?: info?.overview)?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+                Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = if (compact) 2 else 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
             }
-            Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.padding(top = if (compact) 12.dp else 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PillButton("Play", Icons.Filled.PlayArrow, Modifier.focusRequester(playFocus), compact = true) { Playback.playFrom(scope, item) }
                 PillButton("More Info", Icons.Filled.Info, primary = false, compact = true) { openTitle(item) }
             }

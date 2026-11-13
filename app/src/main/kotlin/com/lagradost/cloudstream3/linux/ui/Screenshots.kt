@@ -65,6 +65,9 @@ object Screenshots {
         if (System.getenv("CS_SCREENSHOT_ONLY") == "goat") {
             modeGoat(window, prefix)
         }
+        if (System.getenv("CS_SCREENSHOT_ONLY") == "art") {
+            modeArt(window, prefix)
+        }
         if (System.getenv("CS_SCREENSHOT_ONLY") == "settings7") {
             modeSettings7(window, prefix)
         }
@@ -337,6 +340,22 @@ object Screenshots {
             (Playback.active as? BuiltinPlayer)?.showTranslate(); delay(1200); capture(window, "$prefix-player-translate.png")
             System.exit(0)
         }
+
+    /** CS_SCREENSHOT_ONLY=art: the goat artwork (logo in both styles, the offline screen). */
+    private suspend fun modeArt(window: AppWindow, prefix: String) {
+        Theme.logoRainbow = true
+        window.openSettings("appearance"); delay(1500); capture(window, "$prefix-art-settings-rainbow.png")
+        window.showOverlay(javafx.scene.layout.StackPane(offlineState {}).apply { style = "-fx-background-color: -cs-bg;" }); delay(2500)
+        capture(window, "$prefix-art-offline-rainbow.png")
+        Theme.logoRainbow = false
+        window.showOverlay(javafx.scene.layout.StackPane(offlineState {}).apply { style = "-fx-background-color: -cs-bg;" }); delay(2000)
+        capture(window, "$prefix-art-offline-accent.png")
+        window.closeOverlay()
+        window.openSettings("appearance"); delay(1500); capture(window, "$prefix-art-settings-accent.png")
+        Theme.accent = "#22c55e"; delay(800); capture(window, "$prefix-art-settings-green.png")
+        Theme.logoRainbow = true
+        System.exit(0)
+    }
 
     /** CS_SCREENSHOT_ONLY=settings7 */
     private suspend fun modeSettings7(window: AppWindow, prefix: String) {

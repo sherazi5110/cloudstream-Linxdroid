@@ -245,6 +245,22 @@ class SettingsPage : StackPane(), Refreshable {
         }) else askNew()
     }
 
+    /** Rainbow or accent-coloured logo, each shown as it would look. */
+    private fun logoChoice(): Node = hbox(12.0, *listOf(true to "Rainbow", false to "Theme colour").map { (rainbow, name) ->
+        val was = Theme.logoRainbow
+        // Draw the preview in that style without changing the setting.
+        val preview = javafx.scene.image.ImageView(run {
+            if (was != rainbow) Theme.setLogoRainbowQuietly(rainbow)
+            try { GoatArt.logo(112) } finally { if (was != rainbow) Theme.setLogoRainbowQuietly(was) }
+        }).apply { fitWidth = 56.0; fitHeight = 56.0; isSmooth = true }
+        vbox(6.0, preview, label(name, "bold")).apply {
+            alignment = Pos.CENTER
+            styleClass += "mode-card"
+            if (was == rainbow) styleClass += "selected"
+            onClick { Theme.logoRainbow = rainbow; open("appearance") }
+        }
+    }.toTypedArray())
+
     private fun appearance(): List<Node> {
         val presets = FlowPane(10.0, 10.0).apply {
             ThemePreset.entries.forEach { p ->
@@ -321,6 +337,8 @@ class SettingsPage : StackPane(), Refreshable {
                 row("Mode", "Dark, true-black AMOLED (saves power on OLED screens), midnight blue, light, or liquid glass (translucent panels over a soft colour backdrop or your wallpaper).", Region()),
                 modes.pad(0.0, 0.0, 12.0, 0.0),
                 row("Accent colour", "Buttons, highlights and the player's progress bar. Enter a hex colour for your own.", accents),
+                row("Logo", "The circle behind the goat (and its inner ears): the artwork's rainbow, or your accent colour. " +
+                    "The start animation and the offline goat follow it too.", logoChoice()),
             ),
             section("Home & details",
                 row("Featured slider", "Rotate the big banner on Home through the first catalog's top titles.",
@@ -913,7 +931,11 @@ class SettingsPage : StackPane(), Refreshable {
                 row("Refresh playlists every day", "Download channel lists again when they're more than a day old. Guides refresh every 12 hours.",
                     Switch(LiveTv.refreshDaily) { LiveTv.refreshDaily = it }),
                 row("Allow Live TV in kids profiles", "Kids then see only channels in children's groups (Kids, Cartoons, Animation, Family…).",
-                    Switch(LiveTv.allowKids) { LiveTv.allowKids = it })),
+                    Switch(LiveTv.allowKids) { LiveTv.allowKids = it }),
+                row("Retry without encryption", "Off by default. When a playlist channel's secure (https) address fails, for example because " +
+                    "its server's certificate has expired, try the same address over plain http. Never used for Xtream logins. " +
+                    "Over plain http someone on your network could in theory change what you see.",
+                    Switch(LiveTv.retryPlain) { LiveTv.retryPlain = it })),
         )
     }
 

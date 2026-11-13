@@ -197,11 +197,12 @@ class PinPrompt(title: String, private val onCancel: (() -> Unit)? = null, priva
 
 /** Create or edit a profile: name, avatar, PIN, and the kids settings. */
 class ProfileEditor(private val existing: Profile?) : StackPane() {
-    private var avatar = existing?.avatar ?: "${Avatars.characters.random()}:${Avatars.colors.keys.random()}"
+    private var avatar = existing?.avatar ?: "art:${Avatars.pictures.take(15).random()}"
     private val name = TextField(existing?.name ?: "").apply { promptText = "Name"; styleClass += "text-input" }
     private var kids = existing?.kids ?: false
     private var filter = existing?.filter ?: KidsFilter()
     private val preview = StackPane()
+    private val pictures = FlowPane(10.0, 10.0)
     private val characters = FlowPane(10.0, 10.0)
     private val colors = hbox(10.0)
     private val kidsBox = VBox(14.0)
@@ -233,8 +234,9 @@ class ProfileEditor(private val existing: Profile?) : StackPane() {
         }).toTypedArray())
         val body = vbox(20.0,
             hbox(24.0, preview, vbox(10.0, label("Name", "bold"), name, error, picture)).apply { alignment = Pos.CENTER_LEFT },
-            vbox(10.0, label("Character", "bold"), characters),
-            vbox(10.0, label("Colour", "bold"), colors),
+            vbox(10.0, label("Picture", "bold"), pictures),
+            vbox(10.0, label("Or a character", "bold"), characters),
+            vbox(10.0, label("Character colour", "bold"), colors),
             hbox(12.0, vbox(2.0, label("Kids profile", "bold"),
                 label("Only the extensions and content you allow below. No Settings or Extensions pages.", "faint", "small")), spacer(), kidsSwitch).apply { styleClass += "card-row" },
             kidsBox,
@@ -268,21 +270,29 @@ class ProfileEditor(private val existing: Profile?) : StackPane() {
     private fun renderAvatar() {
         preview.children.setAll(Avatars.node(avatar, 112.0))
         val (character, color) = avatar.split(':').let { (it.getOrNull(0) ?: "") to (it.getOrNull(1) ?: "blue") }
-        val colorName = if (avatar.startsWith("file:")) "blue" else color
+        val drawn = !avatar.startsWith("file:") && !avatar.startsWith("art:")
+        val colorName = if (drawn) color else "blue"
+        pictures.children.setAll(Avatars.pictures.map { name ->
+            StackPane(Avatars.node("art:$name", 54.0)).apply {
+                styleClass += "avatar-choice"
+                if (avatar == "art:$name") styleClass += "selected"
+                onClick { avatar = "art:$name"; renderAvatar() }
+            }
+        })
         characters.children.setAll(Avatars.characters.map { c ->
             StackPane(Avatars.node("$c:$colorName", 54.0)).apply {
                 styleClass += "avatar-choice"
-                if (c == character) styleClass += "selected"
+                if (drawn && c == character) styleClass += "selected"
                 onClick { avatar = "$c:$colorName"; renderAvatar() }
             }
         })
         colors.children.setAll(Avatars.colors.map { (key, hex) ->
             Region().apply {
                 styleClass += "color-dot"
-                if (key == color && !avatar.startsWith("file:")) styleClass += "selected"
+                if (key == color && drawn) styleClass += "selected"
                 style = "-fx-background-color: $hex;"
                 onClick {
-                    val c = if (avatar.startsWith("file:")) Avatars.characters.first() else character
+                    val c = if (drawn) character else Avatars.characters.first()
                     avatar = "$c:$key"; renderAvatar()
                 }
             }

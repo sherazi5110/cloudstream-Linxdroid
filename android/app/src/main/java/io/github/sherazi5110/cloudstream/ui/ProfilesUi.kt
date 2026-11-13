@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -61,10 +62,26 @@ import io.github.sherazi5110.cloudstream.Profile
 import io.github.sherazi5110.cloudstream.Profiles
 
 /**
- * Profile pictures: the Linux app's twelve characters (as emoji here) on one of eight colours,
- * stored the same way ("character:color").
+ * Profile pictures, stored the same way as on the desktop: Stream Goat's own pictures ("art:<name>", the goats and
+ * animals in assets/avatars, made by scripts/art.py), or the twelve characters (as emoji here) on one of eight
+ * colours ("character:color").
  */
 object Avatars {
+    /** The pictures, in the order the profile editor shows them. */
+    val pictures = listOf(
+        "goat-white", "goat-blue", "goat-gold", "goat-green", "goat-pink", "goat-grey", "goat-midnight", "goat-orange", "goat-coral",
+        "goat-king", "goat-dj", "goat-cap", "goat-cowboy", "goat-professor", "goat-party",
+        "cow", "sheep", "pig", "dog", "kitten", "cat", "duck", "chicken", "ram", "rabbit", "horse", "donkey", "llama", "rooster", "bear",
+        "elephant", "gorilla", "giraffe", "raccoon", "penguin", "fox", "red-panda", "owl", "shark", "lion",
+    )
+    private val cache = java.util.concurrent.ConcurrentHashMap<String, androidx.compose.ui.graphics.ImageBitmap>()
+
+    fun picture(name: String): androidx.compose.ui.graphics.ImageBitmap? = cache[name] ?: runCatching {
+        io.github.sherazi5110.cloudstream.App.context.assets.open("avatars/$name.png").use {
+            android.graphics.BitmapFactory.decodeStream(it).asImageBitmap()
+        }
+    }.getOrNull()?.also { cache[name] = it }
+
     val characters = linkedMapOf(
         "smile" to "😊", "cat" to "🐱", "bear" to "🐻", "panda" to "🐼", "robot" to "🤖", "alien" to "👽",
         "ghost" to "👻", "fox" to "🦊", "frog" to "🐸", "owl" to "🦉", "monster" to "👾", "astro" to "🧑‍🚀",
@@ -77,6 +94,14 @@ object Avatars {
 
 @Composable
 fun Avatar(avatar: String, size: Dp, modifier: Modifier = Modifier) {
+    // Stream Goat's pictures are round with horns, ears and food sticking out: shown whole, on no background.
+    if (avatar.startsWith("art:")) {
+        val bitmap = androidx.compose.runtime.remember(avatar) { Avatars.picture(avatar.removePrefix("art:")) }
+        if (bitmap != null) {
+            androidx.compose.foundation.Image(bitmap, contentDescription = null, modifier = modifier.size(size))
+            return
+        }
+    }
     val (character, color) = avatar.split(':').let { (it.getOrNull(0) ?: "smile") to (it.getOrNull(1) ?: "blue") }
     val base = colorOf(Avatars.colors[color] ?: Avatars.colors.getValue("blue"))
     Box(
@@ -159,7 +184,7 @@ fun ProfileButton(size: Dp = 36.dp, showName: Boolean = false) {
 fun ProfileOverlays() {
     if (ProfileUi.picker) WhoIsWatching()
     ProfileUi.editing?.let { ProfileEditor(it, isNew = false) { ProfileUi.editing = null } }
-    if (ProfileUi.creating) ProfileEditor(Profile("", "", "smile:${Avatars.colors.keys.random()}"), isNew = true) { ProfileUi.creating = false }
+    if (ProfileUi.creating) ProfileEditor(Profile("", "", "art:${Avatars.pictures.take(15).random()}"), isNew = true) { ProfileUi.creating = false }
     ProfileUi.pin?.let { req -> PinDialog(req) { ProfileUi.pin = null } }
 }
 
@@ -279,7 +304,9 @@ private fun ProfileEditor(initial: Profile, isNew: Boolean, onClose: () -> Unit)
     var pin by remember { mutableStateOf(initial.pin.orEmpty()) }
     var filter by remember { mutableStateOf(initial.filter) }
     var newParentPin by remember { mutableStateOf("") }
-    val (character, color) = avatar.split(':').let { (it.getOrNull(0) ?: "smile") to (it.getOrNull(1) ?: "blue") }
+    // With a picture chosen, the colour dots go back to a character in that colour.
+    val (character, color) = if (avatar.startsWith("art:")) "smile" to "blue"
+        else avatar.split(':').let { (it.getOrNull(0) ?: "smile") to (it.getOrNull(1) ?: "blue") }
     val lastGrownUp = !initial.kids && Profiles.all().count { !it.kids } <= 1 && !isNew
     val needsParentPin = kids && !Profiles.hasParentPin
 
@@ -305,15 +332,22 @@ private fun ProfileEditor(initial: Profile, isNew: Boolean, onClose: () -> Unit)
         }
         Text("Picture", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Avatars.pictures.forEach { p ->
+                Avatar("art:$p", 48.dp, Modifier.card(CircleShape) { avatar = "art:$p" }
+                    .then(if (avatar == "art:$p") Modifier.border(2.dp, Color.White, CircleShape) else Modifier))
+            }
+        }
+        Text("Or a character", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Avatars.characters.keys.forEach { c ->
                 Avatar("$c:$color", 44.dp, Modifier.card(RoundedCornerShape(11.dp)) { avatar = "$c:$color" }
-                    .then(if (c == character) Modifier.border(2.dp, Color.White, RoundedCornerShape(11.dp)) else Modifier))
+                    .then(if (c == character && !avatar.startsWith("art:")) Modifier.border(2.dp, Color.White, RoundedCornerShape(11.dp)) else Modifier))
             }
         }
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Avatars.colors.forEach { (k, hex) ->
                 Box(Modifier.size(30.dp).card(CircleShape) { avatar = "$character:$k" }.background(colorOf(hex), CircleShape)
-                    .then(if (k == color) Modifier.border(2.dp, Color.White, CircleShape) else Modifier))
+                    .then(if (k == color && !avatar.startsWith("art:")) Modifier.border(2.dp, Color.White, CircleShape) else Modifier))
             }
         }
         OutlinedTextField(pin, { v -> pin = v.filter(Char::isDigit).take(8) }, singleLine = true, modifier = Modifier.padding(top = 16.dp),

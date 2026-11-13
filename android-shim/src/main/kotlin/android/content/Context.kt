@@ -20,10 +20,23 @@ open class Context(val dataDir: File) {
     open fun getString(resId: Int): String = getResources().getString(resId)
     open fun getClassLoader(): ClassLoader = Context::class.java.classLoader
 
+    /**
+     * System services extensions ask for. Only the ActivityManager (memory questions, e.g. "is this a low-memory
+     * device?") exists on the desktop; anything else is null, as on Android for an unknown service.
+     */
+    open fun getSystemService(name: String): Any? = when (name) {
+        ACTIVITY_SERVICE -> android.app.ActivityManager.instance
+        else -> null
+    }
+
     open fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
         prefs.getOrPut(name) { FileSharedPreferences(File(dataDir, "prefs/$name.json")) }
 
     companion object {
         const val MODE_PRIVATE = 0
+        const val ACTIVITY_SERVICE = "activity"
+        const val CONNECTIVITY_SERVICE = "connectivity"
+        const val CLIPBOARD_SERVICE = "clipboard"
+        const val UI_MODE_SERVICE = "uimode"
     }
 }

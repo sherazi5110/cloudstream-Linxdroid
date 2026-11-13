@@ -38,6 +38,9 @@ class Uri private constructor(private val raw: String) {
 
         @JvmStatic fun parse(uriString: String): Uri = Uri(uriString)
 
+        /** file:///path, like Android's. */
+        @JvmStatic fun fromFile(file: java.io.File): Uri = Uri(file.absoluteFile.toPath().toUri().toString())
+
         @JvmStatic fun encode(s: String?): String? = encode(s, null)
 
         @JvmStatic fun encode(s: String?, allow: String?): String? = s?.let {

@@ -29,15 +29,35 @@ class MainActivity : com.lagradost.cloudstream3.MainActivity() {
         )
         CommonActivity.activity = this
         handle(intent)
-        // The intro plays once per launch (not after rotation or returning to the app).
-        val playIntro = savedInstanceState == null && Settings.startupAnimation
+        // The intro plays once per launch (not after rotation or returning to the app). It must never hold the
+        // app up: besides its own clocks, this timer ends it and redraws the window, whatever the animation does.
+        intro.value = savedInstanceState == null && Settings.startupAnimation
+        if (intro.value) android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ endIntro() }, INTRO_LIMIT_MS)
         setContent {
             CloudStreamTheme {
-                var intro by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(playIntro) }
                 AppRoot()
-                if (intro) io.github.sherazi5110.cloudstream.ui.IntroScreen { intro = false }
+                if (intro.value) io.github.sherazi5110.cloudstream.ui.IntroScreen { endIntro() }
             }
         }
+    }
+
+    private val intro = androidx.compose.runtime.mutableStateOf(false)
+
+    private fun endIntro() {
+        if (!intro.value) return
+        intro.value = false
+        window?.decorView?.let { it.invalidate(); it.requestLayout() }
+    }
+
+    override fun onStop() {
+        // Leaving the app during the intro: come back to the app itself.
+        endIntro()
+        super.onStop()
+    }
+
+    private companion object {
+        /** The intro takes about 3.7 s; after this it's gone no matter what. */
+        const val INTRO_LIMIT_MS = 6000L
     }
 
     override fun onNewIntent(intent: Intent) {

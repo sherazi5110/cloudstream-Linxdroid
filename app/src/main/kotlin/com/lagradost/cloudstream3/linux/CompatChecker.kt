@@ -45,7 +45,9 @@ object CompatChecker {
                         else if (checkClass(insn.owner, own, where, issues) && resolveMethod(insn.owner, insn.name, insn.desc, own) == false) {
                             issues += Issue("missing method", insn.owner, insn.name + insn.desc, where)
                         }
-                        is FieldInsnNode -> if (checkClass(insn.owner, own, where, issues) && resolveField(insn.owner, insn.name, own) == false) {
+                        // Compose's $stable flags from host classes are handled when the extension loads (ComposeStable).
+                        is FieldInsnNode -> if (insn.name == "\$stable" && insn.desc == "I" && insn.owner !in own) Unit
+                        else if (checkClass(insn.owner, own, where, issues) && resolveField(insn.owner, insn.name, own) == false) {
                             issues += Issue("missing field", insn.owner, insn.name, where)
                         }
                         is TypeInsnNode -> Type.getObjectType(insn.desc).let { t ->

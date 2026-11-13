@@ -50,6 +50,8 @@ object LiveTv {
         val key: String, val source: String, val name: String, val logo: String?, val group: String?,
         val url: String, val headers: Map<String, String> = emptyMap(), val epgId: String? = null,
         val country: String? = null, val number: Int = 0,
+        /** Marked in the playlist as playing only in its own country (Free-TV's Ⓖ, iptv-org's "[Geo-blocked]"). */
+        val regionLocked: Boolean = false,
     )
 
     data class Programme(val start: Long, val stop: Long, val title: String, val description: String?)
@@ -135,6 +137,67 @@ object LiveTv {
         get() = prefs.getString("refresh_daily", null) != "false"
         set(v) { prefs.edit().putString("refresh_daily", v.toString()).apply() }
 
+    /**
+     * Opt-in (off by default): a playlist channel whose secure (https) address fails, for example because its
+     * server's certificate has expired, is tried once more over plain http. Never for logins such as Xtream,
+     * whose addresses carry the password.
+     */
+    var retryPlain: Boolean
+        get() = prefs.getString("retry_plain", null) == "true"
+        set(v) { prefs.edit().putString("retry_plain", v.toString()).apply() }
+
+    /** Whether [c] gets the plain-http retry (the setting is on, it's https, and it comes from an M3U playlist). */
+    fun plainRetry(c: Channel): Boolean = retryPlain && c.url.startsWith("https://") && saved().firstOrNull { it.id == c.source }?.kind == Kind.M3U
+
+    /**
+     * Why a live stream won't open, in a few words ("its server's security certificate has expired"), from one
+     * quick request to its address; null when the address answers normally (then it's the stream itself).
+     */
+    suspend fun diagnose(url: String, headers: Map<String, String> = emptyMap()): String? = withContext(Dispatchers.IO) {
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return@withContext null
+        val client = app.baseClient.newBuilder().callTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
+            .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS).build()
+        val request = okhttp3.Request.Builder().url(url).apply {
+            headers.forEach { (k, v) -> runCatching { header(k, v) } }
+            if (headers.keys.none { it.equals("User-Agent", true) }) header("User-Agent", com.lagradost.cloudstream3.USER_AGENT)
+        }.build()
+        try {
+            client.newCall(request).execute().use { r ->
+                when (r.code) {
+                    in 200..399 -> null
+                    401, 403, 451 -> "its server refused to send it (HTTP ${r.code}), which usually means it only plays in its own country"
+                    404, 410 -> "its stream address no longer exists (HTTP ${r.code})"
+                    else -> "its server answered with an error (HTTP ${r.code})"
+                }
+            }
+        } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val chain = generateSequence(e) { it.cause }.take(8).toList()
+            when {
+                chain.any { it is java.security.cert.CertificateExpiredException || it.message.orEmpty().contains("expired", true) } ->
+                    "its server's security certificate has expired"
+                chain.any { it is javax.net.ssl.SSLPeerUnverifiedException } -> "its server's security certificate is made out for a different address"
+                chain.any { it is javax.net.ssl.SSLException || it is java.security.cert.CertificateException } -> "its server's secure connection is broken"
+                chain.any { it is java.net.UnknownHostException } -> "its server's address no longer exists"
+                chain.any { it is java.net.ConnectException } -> "its server refuses connections"
+                chain.any { it is java.io.InterruptedIOException } -> "its server isn't answering"
+                else -> "its server can't be reached (${e.javaClass.simpleName})"
+            }
+        }
+    }
+
+    /** What to tell the viewer when channel [name] (address [url]) doesn't play. */
+    suspend fun failureMessage(name: String, url: String, headers: Map<String, String> = emptyMap(), plainTried: Boolean = false): String {
+        val why = diagnose(url, headers) ?: return "$name isn't playing right now. The channel may be off the air, or only available in its own country."
+        val secure = "certificate" in why || "secure connection" in why
+        val hint = when {
+            secure && plainTried -> " Its unencrypted address didn't work either."
+            secure && !retryPlain && url.startsWith("https://") -> " Settings → Live TV → Retry without encryption may make it play."
+            else -> ""
+        }
+        return "$name can't play: $why.$hint"
+    }
+
     /** Kids profiles see Live TV only when allowed, and then only channels in child-friendly groups. */
     var allowKids: Boolean
         get() = prefs.getString("allow_kids", null) == "true"
@@ -182,7 +245,7 @@ object LiveTv {
         val arr = JSONArray()
         list.forEach { c ->
             arr.put(JSONObject().put("k", c.key).put("s", c.source).put("n", c.name).put("l", c.logo ?: "").put("g", c.group ?: "")
-                .put("u", c.url).put("h", JSONObject(c.headers)).put("e", c.epgId ?: "").put("c", c.country ?: "").put("o", c.number))
+                .put("u", c.url).put("h", JSONObject(c.headers)).put("e", c.epgId ?: "").put("c", c.country ?: "").put("o", c.number).put("r", c.regionLocked))
         }
         runCatching { File(cacheDir, "${source.id}.json").writeText(arr.toString()) }
     }
@@ -194,7 +257,7 @@ object LiveTv {
             val h = o.optJSONObject("h")
             Channel(o.getString("k"), o.getString("s"), o.getString("n"), o.optString("l").ifBlank { null }, o.optString("g").ifBlank { null },
                 o.getString("u"), h?.keySet()?.associateWith { h.getString(it) }.orEmpty(), o.optString("e").ifBlank { null },
-                o.optString("c").ifBlank { null }, o.optInt("o"))
+                o.optString("c").ifBlank { null }, o.optInt("o"), o.optBoolean("r"))
         }
     }.getOrNull()
 
@@ -228,6 +291,87 @@ object LiveTv {
         }
     }
 
+    private val circledLetters = Regex("[\\u24B6-\\u24E9]")
+
+    /**
+     * Channels that are web pages rather than streams (a YouTube or Twitch channel's live page, which
+     * playlists such as Free-TV list): the player can't open those, so they open in that service's app or
+     * the browser. Returns the service's name, or null for an ordinary stream.
+     */
+    fun webPage(c: Channel): String? {
+        val host = runCatching { java.net.URI(c.url).host?.lowercase() }.getOrNull() ?: return null
+        fun on(vararg domains: String) = domains.any { host == it || host.endsWith(".$it") }
+        return when {
+            on("youtube.com", "youtu.be") -> "YouTube"
+            on("twitch.tv") -> "Twitch"
+            on("dailymotion.com", "dai.ly") -> "Dailymotion"
+            on("facebook.com", "fb.watch") -> "Facebook"
+            on("vimeo.com") -> "Vimeo"
+            else -> null
+        }
+    }
+
+    /**
+     * How a web channel plays inside the app: in the service's own embed player (the way they let other apps and
+     * sites show their streams). [kind]: "twitch" (id = channel name), "youtube-video" (video id), "youtube-channel"
+     * (a UC… channel id: its current live stream), "youtube-page" (id = the channel's page, whose live video has to be
+     * found first) or "dailymotion" (video id).
+     */
+    data class WebEmbed(val service: String, val kind: String, val id: String)
+
+    fun webEmbed(c: Channel): WebEmbed? {
+        val service = webPage(c) ?: return null
+        val uri = runCatching { java.net.URI(c.url) }.getOrNull() ?: return null
+        val path = uri.path.orEmpty().trim('/').split('/').filter { it.isNotEmpty() }
+        val query = uri.rawQuery.orEmpty().split('&').associate { it.substringBefore('=') to it.substringAfter('=', "") }
+        val videoId = Regex("^[A-Za-z0-9_-]{11}$")
+        return when (service) {
+            "Twitch" -> path.firstOrNull()?.takeIf { it.matches(Regex("[A-Za-z0-9_]{2,40}")) }?.let { WebEmbed(service, "twitch", it.lowercase()) }
+            "Dailymotion" -> (if (uri.host.orEmpty().endsWith("dai.ly")) path.firstOrNull() else path.getOrNull(path.indexOf("video") + 1)?.takeIf { "video" in path })
+                ?.substringBefore('_')?.let { WebEmbed(service, "dailymotion", it) }
+            "YouTube" -> when {
+                query["v"]?.matches(videoId) == true -> WebEmbed(service, "youtube-video", query.getValue("v"))
+                uri.host.orEmpty().endsWith("youtu.be") && path.firstOrNull()?.matches(videoId) == true -> WebEmbed(service, "youtube-video", path[0])
+                path.size >= 2 && path[0] in setOf("embed", "live", "shorts") && path[1].matches(videoId) -> WebEmbed(service, "youtube-video", path[1])
+                path.size >= 2 && path[0] == "channel" && path[1].startsWith("UC") -> WebEmbed(service, "youtube-channel", path[1])
+                else -> WebEmbed(service, "youtube-page", c.url)
+            }
+            else -> null
+        }
+    }
+
+    /** The live video on a YouTube page, from its address, canonical link or og:url (text holding any of them). */
+    fun youtubeLiveVideo(text: String): WebEmbed? {
+        Regex("(?:watch\\?v=|/live/|/embed/)([A-Za-z0-9_-]{11})").find(text)?.let { return WebEmbed("YouTube", "youtube-video", it.groupValues[1]) }
+        Regex("/channel/(UC[A-Za-z0-9_-]{20,})").find(text)?.let { return WebEmbed("YouTube", "youtube-channel", it.groupValues[1]) }
+        return null
+    }
+
+    /**
+     * A full-window page holding the service's embed player, for a page served from [origin] (its address must be
+     * a real web address: Twitch checks the page's host against `parent`, YouTube wants a referrer). YouTube errors
+     * (embedding turned off, not live) are passed to `StreamGoat.error(code)` when the page provides it.
+     */
+    fun embedHtml(e: WebEmbed, origin: String): String? {
+        val host = runCatching { java.net.URI(origin).host }.getOrNull() ?: return null
+        fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
+        val src = when (e.kind) {
+            "twitch" -> "https://player.twitch.tv/?channel=${enc(e.id)}&parent=${enc(host)}&autoplay=true&muted=false"
+            "youtube-video" -> "https://www.youtube.com/embed/${enc(e.id)}?autoplay=1&playsinline=1&rel=0&enablejsapi=1&origin=${enc(origin)}"
+            "youtube-channel" -> "https://www.youtube.com/embed/live_stream?channel=${enc(e.id)}&autoplay=1&playsinline=1&enablejsapi=1&origin=${enc(origin)}"
+            "dailymotion" -> "https://www.dailymotion.com/embed/video/${enc(e.id)}?autoplay=1"
+            else -> return null
+        }
+        val youtube = e.kind.startsWith("youtube")
+        return """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin"><title>Stream Goat</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}iframe{position:fixed;inset:0;width:100%;height:100%;border:0}</style></head>
+<body><iframe id="p" src="$src" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+""" + (if (youtube) """<script>function onYouTubeIframeAPIReady(){new YT.Player('p',{events:{onReady:function(ev){ev.target.playVideo()},onError:function(ev){if(window.StreamGoat)StreamGoat.error(String(ev.data))}}})}</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+""" else "") + "</body></html>"
+    }
+
     /** #EXTM3U playlists: attributes, #EXTVLCOPT headers and the "url|Header=value" form. */
     fun parseM3u(sourceId: String, text: String): List<Channel> {
         val out = mutableListOf<Channel>()
@@ -253,7 +397,10 @@ object LiveTv {
                 else -> {
                     val inf = info ?: continue
                     val attrs = attr.findAll(inf).associate { it.groupValues[1].lowercase() to it.groupValues[2] }
-                    val name = inf.substringAfterLast(",", "").trim().ifBlank { attrs["tvg-name"] ?: "Channel ${out.size + 1}" }
+                    val rawName = inf.substringAfterLast(",", "").trim().ifBlank { attrs["tvg-name"] ?: "Channel ${out.size + 1}" }
+                    // Free-TV marks channels with circled letters (Ⓢ SD, Ⓖ region-locked, Ⓨ YouTube, Ⓣ Twitch): shown as tags instead.
+                    val name = rawName.replace(circledLetters, "").replace(Regex("\\s+"), " ").trim().ifBlank { rawName }
+                    val locked = 'Ⓖ' in rawName || rawName.contains("geo-blocked", true)
                     val headers = options.toMutableMap()
                     var url = line
                     if ('|' in line) {
@@ -267,7 +414,7 @@ object LiveTv {
                         out += Channel("$sourceId:${out.size}:${url.hashCode()}", sourceId, name, attrs["tvg-logo"]?.ifBlank { null },
                             (attrs["group-title"] ?: extGroup)?.substringBefore(';')?.ifBlank { null }, url, headers,
                             attrs["tvg-id"]?.ifBlank { null }, attrs["tvg-country"]?.ifBlank { null }?.uppercase(),
-                            attrs["tvg-chno"]?.toIntOrNull() ?: (out.size + 1))
+                            attrs["tvg-chno"]?.toIntOrNull() ?: (out.size + 1), locked)
                     }
                     info = null
                 }
@@ -457,7 +604,11 @@ object LiveApi : MainAPI() {
     override val supportedTypes = setOf(TvType.Live)
 
     /** A channel as the "url" this API loads: everything needed to play it. */
-    fun data(c: LiveTv.Channel) = JSONObject().put("url", c.url).put("headers", JSONObject(c.headers)).put("name", c.name).put("logo", c.logo ?: "").toString()
+    fun data(c: LiveTv.Channel) = JSONObject().put("url", c.url).put("headers", JSONObject(c.headers)).put("name", c.name).put("logo", c.logo ?: "")
+        .apply { if (LiveTv.plainRetry(c)) put("plain", true) }.toString()
+
+    /** The link name of the plain-http retry (see [LiveTv.retryPlain]). */
+    const val PLAIN = "Live (unencrypted)"
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? = null
 
@@ -480,6 +631,11 @@ object LiveApi : MainAPI() {
         val headers = h?.keySet()?.associateWith { h.getString(it) }.orEmpty()
         val type = if (url.substringBefore('?').endsWith(".m3u8")) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
         callback(newExtractorLink(o.optString("name", "Live TV"), "Live", url, type) {
+            this.headers = headers
+            headers["Referer"]?.let { referer = it }
+        })
+        // Opt-in: the same address over plain http, which the player tries when the secure one fails.
+        if (o.optBoolean("plain") && url.startsWith("https://")) callback(newExtractorLink(o.optString("name", "Live TV"), PLAIN, "http://" + url.removePrefix("https://"), type) {
             this.headers = headers
             headers["Referer"]?.let { referer = it }
         })
