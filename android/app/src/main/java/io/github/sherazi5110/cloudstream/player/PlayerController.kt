@@ -255,7 +255,9 @@ class PlayerController(
             App.toast("${current?.name ?: "Source"} failed, trying ${next.name}")
             play(next)
         } else {
-            error = "This source can't be played. Pick another one in Sources."
+            // A TV channel has one stream: say what usually stops it rather than pointing at other sources.
+            error = if (api is io.github.sherazi5110.cloudstream.LiveApi) "${response.name} isn't playing right now. The channel may be off the air, or only available in its own country."
+                else "This source can't be played. Pick another one in Sources."
             buffering = false
         }
     }

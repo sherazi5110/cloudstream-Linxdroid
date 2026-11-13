@@ -49,6 +49,8 @@ object LiveTv {
         val key: String, val source: String, val name: String, val logo: String?, val group: String?,
         val url: String, val headers: Map<String, String> = emptyMap(), val epgId: String? = null,
         val country: String? = null, val number: Int = 0,
+        /** Marked in the playlist as playing only in its own country (Free-TV's Ⓖ, iptv-org's "[Geo-blocked]"). */
+        val regionLocked: Boolean = false,
     )
 
     data class Programme(val start: Long, val stop: Long, val title: String, val description: String?)
@@ -181,7 +183,7 @@ object LiveTv {
         val arr = JSONArray()
         list.forEach { c ->
             arr.put(JSONObject().put("k", c.key).put("s", c.source).put("n", c.name).put("l", c.logo ?: "").put("g", c.group ?: "")
-                .put("u", c.url).put("h", JSONObject(c.headers)).put("e", c.epgId ?: "").put("c", c.country ?: "").put("o", c.number))
+                .put("u", c.url).put("h", JSONObject(c.headers)).put("e", c.epgId ?: "").put("c", c.country ?: "").put("o", c.number).put("r", c.regionLocked))
         }
         runCatching { File(cacheDir, "${source.id}.json").writeText(arr.toString()) }
     }
@@ -193,7 +195,7 @@ object LiveTv {
             val h = o.optJSONObject("h")
             Channel(o.getString("k"), o.getString("s"), o.getString("n"), o.optString("l").ifBlank { null }, o.optString("g").ifBlank { null },
                 o.getString("u"), h.toStringMap(), o.optString("e").ifBlank { null },
-                o.optString("c").ifBlank { null }, o.optInt("o"))
+                o.optString("c").ifBlank { null }, o.optInt("o"), o.optBoolean("r"))
         }
     }.getOrNull()
 
@@ -227,6 +229,26 @@ object LiveTv {
         }
     }
 
+    private val circledLetters = Regex("[\\u24B6-\\u24E9]")
+
+    /**
+     * Channels that are web pages rather than streams (a YouTube or Twitch channel's live page, which
+     * playlists such as Free-TV list): the player can't open those, so they open in that service's app or
+     * the browser. Returns the service's name, or null for an ordinary stream.
+     */
+    fun webPage(c: Channel): String? {
+        val host = runCatching { java.net.URI(c.url).host?.lowercase() }.getOrNull() ?: return null
+        fun on(vararg domains: String) = domains.any { host == it || host.endsWith(".$it") }
+        return when {
+            on("youtube.com", "youtu.be") -> "YouTube"
+            on("twitch.tv") -> "Twitch"
+            on("dailymotion.com", "dai.ly") -> "Dailymotion"
+            on("facebook.com", "fb.watch") -> "Facebook"
+            on("vimeo.com") -> "Vimeo"
+            else -> null
+        }
+    }
+
     /** #EXTM3U playlists: attributes, #EXTVLCOPT headers and the "url|Header=value" form. */
     fun parseM3u(sourceId: String, text: String): List<Channel> {
         val out = mutableListOf<Channel>()
@@ -252,7 +274,10 @@ object LiveTv {
                 else -> {
                     val inf = info ?: continue
                     val attrs = attr.findAll(inf).associate { it.groupValues[1].lowercase() to it.groupValues[2] }
-                    val name = inf.substringAfterLast(",", "").trim().ifBlank { attrs["tvg-name"] ?: "Channel ${out.size + 1}" }
+                    val rawName = inf.substringAfterLast(",", "").trim().ifBlank { attrs["tvg-name"] ?: "Channel ${out.size + 1}" }
+                    // Free-TV marks channels with circled letters (Ⓢ SD, Ⓖ region-locked, Ⓨ YouTube, Ⓣ Twitch): shown as tags instead.
+                    val name = rawName.replace(circledLetters, "").replace(Regex("\\s+"), " ").trim().ifBlank { rawName }
+                    val locked = 'Ⓖ' in rawName || rawName.contains("geo-blocked", true)
                     val headers = options.toMutableMap()
                     var url = line
                     if ('|' in line) {
@@ -266,7 +291,7 @@ object LiveTv {
                         out += Channel("$sourceId:${out.size}:${url.hashCode()}", sourceId, name, attrs["tvg-logo"]?.ifBlank { null },
                             (attrs["group-title"] ?: extGroup)?.substringBefore(';')?.ifBlank { null }, url, headers,
                             attrs["tvg-id"]?.ifBlank { null }, attrs["tvg-country"]?.ifBlank { null }?.uppercase(),
-                            attrs["tvg-chno"]?.toIntOrNull() ?: (out.size + 1))
+                            attrs["tvg-chno"]?.toIntOrNull() ?: (out.size + 1), locked)
                     }
                     info = null
                 }

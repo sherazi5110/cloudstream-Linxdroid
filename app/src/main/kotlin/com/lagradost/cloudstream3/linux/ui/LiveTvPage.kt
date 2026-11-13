@@ -4,6 +4,7 @@ import com.lagradost.cloudstream3.linux.ChannelLogos
 import com.lagradost.cloudstream3.linux.Engine
 import com.lagradost.cloudstream3.linux.LiveApi
 import com.lagradost.cloudstream3.linux.LiveTv
+import com.lagradost.cloudstream3.linux.Os
 import com.lagradost.cloudstream3.linux.StremioAddons
 import com.lagradost.cloudstream3.linux.StremioApi
 import javafx.geometry.Pos
@@ -211,7 +212,7 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
             if (next != null) children += label("Next: ${next.title} · ${time(next.start)}", "muted")
         }
         val buttons = hbox(12.0,
-            button("Watch live", Icons.PLAY, "hero-play") { play(c) },
+            button(LiveTv.webPage(c)?.let { "Watch on $it" } ?: "Watch live", Icons.PLAY, "hero-play") { play(c) },
             button(if (fav) "Favourite" else "Add to favourites", if (fav) Icons.STAR else Icons.STAR_OUTLINE, "hero-info") { LiveTv.toggleFavourite(c) }.apply {
                 if (fav) styleClass += "is-favourite"
             },
@@ -318,8 +319,14 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
             setMinSize(w, 124.0); setMaxSize(w, 124.0)
             style = "-fx-background-color: linear-gradient(to bottom right, ${colorFor(c.name)}cc, #120a22);"
         }
-        val live = label("● LIVE", "live-badge").also { StackPane.setAlignment(it, Pos.TOP_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0)) }
+        val web = LiveTv.webPage(c)
+        val live = label(web?.let { "▶ ${it.uppercase()}" } ?: "● LIVE", "live-badge").also { StackPane.setAlignment(it, Pos.TOP_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0)) }
+        if (web != null) live.tooltip("Opens in $web: it's a $web channel, not a stream the player can open")
         pic.children += live
+        if (c.regionLocked) pic.children += label("Region-locked", "badge").also {
+            StackPane.setAlignment(it, Pos.BOTTOM_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0))
+            it.tooltip("The playlist says this channel only plays in its own country")
+        }
         if (c.number > 0) pic.children += label("${c.number}", "badge").also { StackPane.setAlignment(it, Pos.TOP_RIGHT); StackPane.setMargin(it, javafx.geometry.Insets(8.0)) }
         val star = StackPane(icon(if (fav) Icons.STAR else Icons.STAR_OUTLINE, 18.0)).apply {
             styleClass += "channel-star"
@@ -377,6 +384,12 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
 
     private fun play(c: LiveTv.Channel) {
         LiveTv.watched(c)
+        // A YouTube or Twitch channel page: the player can't open it, its site can.
+        LiveTv.webPage(c)?.let { service ->
+            if (Os.open(c.url)) Toasts.show("Opening ${c.name} on $service in your browser")
+            else Toasts.show("Couldn't open ${c.name}: ${c.url}")
+            return
+        }
         ui.launch {
             try {
                 if (c.source.startsWith("stremio:")) {

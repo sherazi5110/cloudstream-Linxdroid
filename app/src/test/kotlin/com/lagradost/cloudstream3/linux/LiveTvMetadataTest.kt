@@ -128,6 +128,29 @@ class LiveTvMetadataTest {
     }
 
     @Test
+    fun `Free-TV style playlists - marks become tags, YouTube and Twitch channels open on their sites`() = runBlocking {
+        // As in github.com/Free-TV/IPTV: Ⓢ SD, Ⓖ region-locked, Ⓨ YouTube, Ⓣ Twitch.
+        val list = LiveTv.parseM3u("free", """
+            #EXTM3U x-tvg-url="https://epg.example/a.xml.gz, https://epg.example/b.xml.gz"
+            #EXTINF:-1 tvg-name="Kanali 7" tvg-id="Kanali7.al" tvg-country="AL" group-title="Albania",Kanali 7 Ⓢ
+            https://fe.example/delta/105/out/u/1200_1.m3u8
+            #EXTINF:-1 tvg-name="SBS" tvg-chno="5" group-title="Australia",SBS Ⓖ
+            https://i.example/.r/sbs.m3u8
+            #EXTINF:-1 tvg-name="ABC News Albania" group-title="Albania",ABC News Albania Ⓣ
+            https://www.twitch.tv/abcnewsal
+            #EXTINF:-1 tvg-name="Euronews Albania" group-title="Albania",Euronews Albania Ⓨ
+            https://www.youtube.com/@EuronewsAlbania/live
+            #EXTINF:-1 group-title="France",France 24 Ⓨ Ⓖ
+            https://youtu.be/abc
+        """.trimIndent())
+        assertEquals(listOf("Kanali 7", "SBS", "ABC News Albania", "Euronews Albania", "France 24"), list.map { it.name })
+        assertEquals(listOf(false, true, false, false, true), list.map { it.regionLocked })
+        assertEquals(listOf(null, null, "Twitch", "YouTube", "YouTube"), list.map { LiveTv.webPage(it) })
+        assertEquals(5, list[1].number)
+        Unit
+    }
+
+    @Test
     fun `Xtream logins and Stremio TV add-ons go to Live TV only`() = runBlocking {
         val bad = runCatching { LiveTv.add(LiveTv.Kind.XTREAM, "$base/xtream", null, null, "demo", "wrong") }
         assertTrue(bad.isFailure)

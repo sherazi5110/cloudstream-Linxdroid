@@ -387,6 +387,11 @@ class BuiltinPlayer(
                 flash("Source failed — waiting for another source…")
                 retryWhenAvailable = true
             }
+            // A TV channel has one stream: say what usually stops it rather than offering other sources.
+            api is com.lagradost.cloudstream3.linux.LiveApi -> {
+                Toasts.show("${response.name} isn't playing right now. The channel may be off the air, or only available in its own country.", null, 10.0)
+                finish()
+            }
             else -> {
                 Toasts.show("This stream couldn't be played", "Try another source" to { Playback.open(api, response, playable, chooseManually = true) }, 10.0)
                 finish()
