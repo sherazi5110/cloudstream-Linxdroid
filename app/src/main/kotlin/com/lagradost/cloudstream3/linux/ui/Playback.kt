@@ -121,7 +121,8 @@ class LoadingScreen(
             playNow.text = "Play now · " + Qualities.getStringByInt(best.quality).ifEmpty { "Auto" }
         }
         status.text = when {
-            !sources.finished && n == 0 -> "Looking for sources…"
+            !sources.finished && n == 0 -> com.lagradost.cloudstream3.linux.LastSource.name(api.name, response.url)
+                ?.let { "Looking for $it (your last source)…" } ?: "Looking for sources…"
             !sources.finished -> "Found ${sources.lastSource ?: "a source"} · still searching"
             n == 0 -> errorText()
             else -> "Ready"
@@ -140,6 +141,12 @@ class LoadingScreen(
             return
         }
         if (!armed) return
+        // The source that last played this title (Continue Watching, Resume) starts as soon as it's found.
+        com.lagradost.cloudstream3.linux.LastSource.find(api.name, response.url, sources.links.toList())?.let { last ->
+            status.text = "Continuing with ${last.name}"
+            play(last)
+            return
+        }
         // Like the official app: the best link plays once the extension has found them all ("Play now" starts
         // at once). Starting with an early, weaker link made extensions that ask many sites at once (Eclipsia)
         // fail over from link to link.

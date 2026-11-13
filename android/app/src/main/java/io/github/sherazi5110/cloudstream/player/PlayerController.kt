@@ -127,6 +127,8 @@ class PlayerController(
         player.setEventListener { e ->
             when (e.type) {
                 MediaPlayer.Event.Playing -> {
+                    // Next time (Continue Watching, Resume) this title starts with the same source.
+                    current?.takeIf { api !is io.github.sherazi5110.cloudstream.LiveApi }?.let { io.github.sherazi5110.cloudstream.LastSource.remember(api.name, response.url, it) }
                     playing = true; buffering = false; started = true; error = null; watchdog?.cancel()
                     if (!languagesApplied) { languagesApplied = true; main.postDelayed({ applyLanguages() }, 1500) }
                 }
@@ -151,6 +153,11 @@ class PlayerController(
                     val link = event.link
                     if (link.type == ExtractorLinkType.MAGNET || link.type == ExtractorLinkType.TORRENT) return@collect
                     if (links.none { it.url == link.url }) links.add(link)
+                    // The source that last played this title starts as soon as it's found (Continue Watching, Resume).
+                    if (autoPlay && current == null && io.github.sherazi5110.cloudstream.LastSource.find(api.name, response.url, listOf(link)) != null) {
+                        App.toast("Continuing with ${link.name}")
+                        play(link)
+                    }
                     onNewLink()
                 }
                 // Added to the player when picked in the Subtitles menu.

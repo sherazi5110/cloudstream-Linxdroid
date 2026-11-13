@@ -319,6 +319,8 @@ class BuiltinPlayer(
 
     private inner class Events : MediaPlayerEventAdapter() {
         override fun playing(mediaPlayer: MediaPlayer) = fx {
+            // Next time (Continue Watching, Resume) this title starts with the same source.
+            if (api !is com.lagradost.cloudstream3.linux.LiveApi) com.lagradost.cloudstream3.linux.LastSource.remember(api.name, response.url, current)
             playing = true
             spinner.isVisible = false
             playButton.graphic = icon(Icons.PAUSE, 22.0)
