@@ -128,6 +128,42 @@ class LiveTvMetadataTest {
     }
 
     @Test
+    fun `a channel that doesn't play says why, and the opt-in plain-http retry`() = runBlocking {
+        // The reason, from one request to the channel's address.
+        val token = mapOf("X-CS-Token" to "demo")
+        assertEquals(null, LiveTv.diagnose("$base/hls/master.m3u8", token))
+        assertTrue("refused to send it (HTTP 403)" in LiveTv.diagnose("$base/hls/master.m3u8").orEmpty())
+        assertTrue("no longer exists (HTTP 404)" in LiveTv.diagnose("$base/no-such-channel.m3u8").orEmpty())
+        assertEquals("its server's address no longer exists", LiveTv.diagnose("http://channel.invalid/live.m3u8"))
+        val closed = java.net.ServerSocket(0).use { it.localPort }
+        assertEquals("its server refuses connections", LiveTv.diagnose("http://127.0.0.1:$closed/live.m3u8"))
+        val msg = LiveTv.failureMessage("Cine.AR", "$base/no-such-channel.m3u8")
+        assertTrue(msg.startsWith("Cine.AR can't play: its stream address no longer exists"), msg)
+        assertTrue("off the air" in LiveTv.failureMessage("Alpo TV", "$base/hls/master.m3u8", token))
+
+        // Retry without encryption: off by default; then a second, http link for https playlist channels only.
+        val (source, _) = LiveTv.add(LiveTv.Kind.M3U, "$base/iptv/playlist.m3u", "Test IPTV")
+        val secure = LiveTv.Channel("k", source.id, "Cine.AR", null, null, "https://tv.example/live/cinear/playlist.m3u8")
+        suspend fun links(c: LiveTv.Channel) = mutableListOf<com.lagradost.cloudstream3.utils.ExtractorLink>().also { out ->
+            LiveApi.loadLinks(LiveApi.data(c), false, {}) { out += it }
+        }
+        assertFalse(LiveTv.retryPlain)
+        assertEquals(1, links(secure).size)
+        LiveTv.retryPlain = true
+        try {
+            val both = links(secure)
+            assertEquals(listOf("https://tv.example/live/cinear/playlist.m3u8", "http://tv.example/live/cinear/playlist.m3u8"), both.map { it.url })
+            assertEquals(LiveApi.PLAIN, both[1].name)
+            // Not for addresses that are already http, nor channels from logins (Xtream addresses carry the password).
+            assertEquals(1, links(secure.copy(url = "http://tv.example/a.m3u8")).size)
+            assertEquals(1, links(secure.copy(source = "xtream-login")).size)
+        } finally {
+            LiveTv.retryPlain = false
+        }
+        Unit
+    }
+
+    @Test
     fun `Free-TV style playlists - marks become tags, YouTube and Twitch channels open on their sites`() = runBlocking {
         // As in github.com/Free-TV/IPTV: Ⓢ SD, Ⓖ region-locked, Ⓨ YouTube, Ⓣ Twitch.
         val list = LiveTv.parseM3u("free", """

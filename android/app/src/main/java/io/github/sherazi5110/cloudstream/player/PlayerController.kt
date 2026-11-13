@@ -206,10 +206,11 @@ class PlayerController(
         player.media = media
         media.release()
         player.play()
-        // A source that hasn't started after 25 s (dead host, endless redirect) gives way to the next one.
+        // A source that hasn't started after 25 s (dead host, endless redirect) gives way to the next one;
+        // a TV channel after 12 s (it has nothing else to wait for).
         watchdog?.cancel()
         if (!started) watchdog = scope.launch {
-            delay(25_000)
+            delay(if (api is io.github.sherazi5110.cloudstream.LiveApi) 12_000 else 25_000)
             if (!started && current?.url == link.url) failover()
         }
         player.rate = speed
@@ -255,9 +256,15 @@ class PlayerController(
             App.toast("${current?.name ?: "Source"} failed, trying ${next.name}")
             play(next)
         } else {
-            // A TV channel has one stream: say what usually stops it rather than pointing at other sources.
-            error = if (api is io.github.sherazi5110.cloudstream.LiveApi) "${response.name} isn't playing right now. The channel may be off the air, or only available in its own country."
-                else "This source can't be played. Pick another one in Sources."
+            // A TV channel has one stream: find out what stops it (an expired certificate, no answer…) and say so.
+            if (api is io.github.sherazi5110.cloudstream.LiveApi) {
+                val first = links.firstOrNull { it.name != io.github.sherazi5110.cloudstream.LiveApi.PLAIN } ?: current
+                error = "Checking why ${response.name} doesn't play…"
+                if (first != null) scope.launch {
+                    error = io.github.sherazi5110.cloudstream.LiveTv.failureMessage(response.name, first.url, first.headers,
+                        plainTried = tried.any { it.startsWith("http://") } && first.url.startsWith("https://"))
+                }
+            } else error = "This source can't be played. Pick another one in Sources."
             buffering = false
         }
     }

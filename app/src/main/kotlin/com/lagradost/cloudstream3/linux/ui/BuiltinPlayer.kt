@@ -222,8 +222,16 @@ class BuiltinPlayer(
     private var hdrOverride: Boolean? = null
     private var enhancing = false
 
+    /** A TV channel that hasn't started after 12 s counts as failed (it has nothing else to wait for). */
+    private var liveWatch: javafx.animation.PauseTransition? = null
+
     private fun open(link: ExtractorLink, startAt: Long?) {
         openedAt = System.currentTimeMillis()
+        liveWatch?.stop()
+        if (api is com.lagradost.cloudstream3.linux.LiveApi) liveWatch = javafx.animation.PauseTransition(javafx.util.Duration.seconds(12.0)).apply {
+            setOnFinished { if (!finished && current === link && position == 0L) onError() }
+            play()
+        }
         current = link
         spinner.isVisible = true
         val quality = Qualities.getStringByInt(link.quality)
@@ -387,10 +395,12 @@ class BuiltinPlayer(
                 flash("Source failed — waiting for another source…")
                 retryWhenAvailable = true
             }
-            // A TV channel has one stream: say what usually stops it rather than offering other sources.
+            // A TV channel has one stream: find out what stops it (an expired certificate, no answer…) and say so.
             api is com.lagradost.cloudstream3.linux.LiveApi -> {
-                Toasts.show("${response.name} isn't playing right now. The channel may be off the air, or only available in its own country.", null, 10.0)
+                val first = sources.ranked().firstOrNull { it.name != com.lagradost.cloudstream3.linux.LiveApi.PLAIN } ?: current
+                val plainTried = failed.any { it.startsWith("http://") } && first.url.startsWith("https://")
                 finish()
+                ui.launch { Toasts.show(com.lagradost.cloudstream3.linux.LiveTv.failureMessage(response.name, first.url, first.getAllHeaders(), plainTried), null, 12.0) }
             }
             else -> {
                 Toasts.show("This stream couldn't be played", "Try another source" to { Playback.open(api, response, playable, chooseManually = true) }, 10.0)

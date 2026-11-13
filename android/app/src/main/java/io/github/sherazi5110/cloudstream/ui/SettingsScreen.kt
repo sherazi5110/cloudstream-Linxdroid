@@ -330,6 +330,10 @@ private fun LiveTvSection() {
     SwitchRow("Refresh channel lists daily", "Otherwise they're kept until you refresh them on the Live TV page.", daily) { daily = it; LiveTv.refreshDaily = it }
     var kids by remember { mutableStateOf(LiveTv.allowKids) }
     SwitchRow("Live TV in kids profiles", "Only channels in children's groups.", kids) { kids = it; LiveTv.allowKids = it }
+    var plain by remember { mutableStateOf(LiveTv.retryPlain) }
+    SwitchRow("Retry without encryption", "Off by default. When a playlist channel's secure (https) address fails, for example because its " +
+        "server's certificate has expired, try the same address over plain http. Never used for Xtream logins. Over plain http someone " +
+        "on your network could in theory change what you see.", plain) { plain = it; LiveTv.retryPlain = it }
 }
 
 @Composable

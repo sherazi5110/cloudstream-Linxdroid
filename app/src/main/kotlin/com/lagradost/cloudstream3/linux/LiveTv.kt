@@ -137,6 +137,67 @@ object LiveTv {
         get() = prefs.getString("refresh_daily", null) != "false"
         set(v) { prefs.edit().putString("refresh_daily", v.toString()).apply() }
 
+    /**
+     * Opt-in (off by default): a playlist channel whose secure (https) address fails, for example because its
+     * server's certificate has expired, is tried once more over plain http. Never for logins such as Xtream,
+     * whose addresses carry the password.
+     */
+    var retryPlain: Boolean
+        get() = prefs.getString("retry_plain", null) == "true"
+        set(v) { prefs.edit().putString("retry_plain", v.toString()).apply() }
+
+    /** Whether [c] gets the plain-http retry (the setting is on, it's https, and it comes from an M3U playlist). */
+    fun plainRetry(c: Channel): Boolean = retryPlain && c.url.startsWith("https://") && saved().firstOrNull { it.id == c.source }?.kind == Kind.M3U
+
+    /**
+     * Why a live stream won't open, in a few words ("its server's security certificate has expired"), from one
+     * quick request to its address; null when the address answers normally (then it's the stream itself).
+     */
+    suspend fun diagnose(url: String, headers: Map<String, String> = emptyMap()): String? = withContext(Dispatchers.IO) {
+        if (!url.startsWith("http://") && !url.startsWith("https://")) return@withContext null
+        val client = app.baseClient.newBuilder().callTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
+            .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS).build()
+        val request = okhttp3.Request.Builder().url(url).apply {
+            headers.forEach { (k, v) -> runCatching { header(k, v) } }
+            if (headers.keys.none { it.equals("User-Agent", true) }) header("User-Agent", com.lagradost.cloudstream3.USER_AGENT)
+        }.build()
+        try {
+            client.newCall(request).execute().use { r ->
+                when (r.code) {
+                    in 200..399 -> null
+                    401, 403, 451 -> "its server refused to send it (HTTP ${r.code}), which usually means it only plays in its own country"
+                    404, 410 -> "its stream address no longer exists (HTTP ${r.code})"
+                    else -> "its server answered with an error (HTTP ${r.code})"
+                }
+            }
+        } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val chain = generateSequence(e) { it.cause }.take(8).toList()
+            when {
+                chain.any { it is java.security.cert.CertificateExpiredException || it.message.orEmpty().contains("expired", true) } ->
+                    "its server's security certificate has expired"
+                chain.any { it is javax.net.ssl.SSLPeerUnverifiedException } -> "its server's security certificate is made out for a different address"
+                chain.any { it is javax.net.ssl.SSLException || it is java.security.cert.CertificateException } -> "its server's secure connection is broken"
+                chain.any { it is java.net.UnknownHostException } -> "its server's address no longer exists"
+                chain.any { it is java.net.ConnectException } -> "its server refuses connections"
+                chain.any { it is java.io.InterruptedIOException } -> "its server isn't answering"
+                else -> "its server can't be reached (${e.javaClass.simpleName})"
+            }
+        }
+    }
+
+    /** What to tell the viewer when channel [name] (address [url]) doesn't play. */
+    suspend fun failureMessage(name: String, url: String, headers: Map<String, String> = emptyMap(), plainTried: Boolean = false): String {
+        val why = diagnose(url, headers) ?: return "$name isn't playing right now. The channel may be off the air, or only available in its own country."
+        val secure = "certificate" in why || "secure connection" in why
+        val hint = when {
+            secure && plainTried -> " Its unencrypted address didn't work either."
+            secure && !retryPlain && url.startsWith("https://") -> " Settings → Live TV → Retry without encryption may make it play."
+            else -> ""
+        }
+        return "$name can't play: $why.$hint"
+    }
+
     /** Kids profiles see Live TV only when allowed, and then only channels in child-friendly groups. */
     var allowKids: Boolean
         get() = prefs.getString("allow_kids", null) == "true"
@@ -543,7 +604,11 @@ object LiveApi : MainAPI() {
     override val supportedTypes = setOf(TvType.Live)
 
     /** A channel as the "url" this API loads: everything needed to play it. */
-    fun data(c: LiveTv.Channel) = JSONObject().put("url", c.url).put("headers", JSONObject(c.headers)).put("name", c.name).put("logo", c.logo ?: "").toString()
+    fun data(c: LiveTv.Channel) = JSONObject().put("url", c.url).put("headers", JSONObject(c.headers)).put("name", c.name).put("logo", c.logo ?: "")
+        .apply { if (LiveTv.plainRetry(c)) put("plain", true) }.toString()
+
+    /** The link name of the plain-http retry (see [LiveTv.retryPlain]). */
+    const val PLAIN = "Live (unencrypted)"
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? = null
 
@@ -566,6 +631,11 @@ object LiveApi : MainAPI() {
         val headers = h?.keySet()?.associateWith { h.getString(it) }.orEmpty()
         val type = if (url.substringBefore('?').endsWith(".m3u8")) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO
         callback(newExtractorLink(o.optString("name", "Live TV"), "Live", url, type) {
+            this.headers = headers
+            headers["Referer"]?.let { referer = it }
+        })
+        // Opt-in: the same address over plain http, which the player tries when the secure one fails.
+        if (o.optBoolean("plain") && url.startsWith("https://")) callback(newExtractorLink(o.optString("name", "Live TV"), PLAIN, "http://" + url.removePrefix("https://"), type) {
             this.headers = headers
             headers["Referer"]?.let { referer = it }
         })

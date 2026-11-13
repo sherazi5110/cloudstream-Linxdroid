@@ -931,7 +931,11 @@ class SettingsPage : StackPane(), Refreshable {
                 row("Refresh playlists every day", "Download channel lists again when they're more than a day old. Guides refresh every 12 hours.",
                     Switch(LiveTv.refreshDaily) { LiveTv.refreshDaily = it }),
                 row("Allow Live TV in kids profiles", "Kids then see only channels in children's groups (Kids, Cartoons, Animation, Family…).",
-                    Switch(LiveTv.allowKids) { LiveTv.allowKids = it })),
+                    Switch(LiveTv.allowKids) { LiveTv.allowKids = it }),
+                row("Retry without encryption", "Off by default. When a playlist channel's secure (https) address fails, for example because " +
+                    "its server's certificate has expired, try the same address over plain http. Never used for Xtream logins. " +
+                    "Over plain http someone on your network could in theory change what you see.",
+                    Switch(LiveTv.retryPlain) { LiveTv.retryPlain = it })),
         )
     }
 
