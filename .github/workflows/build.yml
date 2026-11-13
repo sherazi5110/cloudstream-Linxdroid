@@ -136,6 +136,23 @@ jobs:
         with:
           files: build/apk/*.apk
 
+      - name: Test build (pull requests)
+        # A pull request's APKs also go to the "test-build" pre-release, for direct download links (e.g. typed into
+        # Downloader on a TV). A pre-release never counts as the latest release: the apps' update check and the
+        # website's download buttons don't see it.
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-build
+          target_commitish: ${{ github.event.pull_request.head.sha }}
+          name: Test build (not a release)
+          prerelease: true
+          make_latest: false
+          body: |
+            For testing only: pull request #${{ github.event.pull_request.number }} "${{ github.event.pull_request.title }}", commit ${{ github.event.pull_request.head.sha }}.
+            Android TV / Fire TV with Downloader: `https://github.com/${{ github.repository }}/releases/download/test-build/streamgoat-android-armeabi-v7a.apk` (or `...-arm64-v8a.apk`, or `...-universal.apk` if unsure).
+          files: build/apk/*.apk
+
   flatpak:
     # Builds libVLC inside the Freedesktop SDK and packs the app image into a .flatpak.
     needs: build

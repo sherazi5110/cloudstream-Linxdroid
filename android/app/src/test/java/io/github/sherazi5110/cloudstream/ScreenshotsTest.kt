@@ -11,6 +11,7 @@ import io.github.sherazi5110.cloudstream.ui.ThemeState
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import com.lagradost.cloudstream3.newMovieSearchResponse
 
 /**
  * Pictures of the real Android screens, drawn on the computer (no phone or emulator):
@@ -61,4 +62,34 @@ class TvScreenshotsTest {
     @Test fun tabletHome() { Nav.tab = Tab.HOME; shot("tablet-home") }
 
     @Test fun tabletSettings() { Nav.tab = Tab.MORE; shot("tablet-settings") }
+}
+
+/** Android TV at 1080p (960x540 to the app): the home banner must fit its title, plot and buttons below the top bar. */
+class TvHomeBannerTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.NEXUS_10.copy(screenWidth = 1920, screenHeight = 1080,
+        density = com.android.resources.Density.XHIGH, orientation = com.android.resources.ScreenOrientation.LANDSCAPE), maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+        Nav.stack.clear()
+    }
+
+    @Test
+    fun banner() {
+        val api = object : com.lagradost.cloudstream3.MainAPI() { override var name = "Eclipsia"; override val hasMainPage = true }
+        val items = (1..6).map { i ->
+            kotlinx.coroutines.runBlocking {
+                api.newMovieSearchResponse("Resident Evil: The Final Chapter of a Long Title $i", "https://x/$i", com.lagradost.cloudstream3.TvType.Movie) { year = 2026 }
+            }
+        }
+        val state = io.github.sherazi5110.cloudstream.ui.HomeState().apply {
+            providers = listOf(api); this.api = api
+            sections += Engine.HomeSection(0, api, com.lagradost.cloudstream3.MainPageData("Trending", ""),
+                com.lagradost.cloudstream3.HomePageList("Trending", items))
+        }
+        paparazzi.snapshot("tv-home-banner") { CloudStreamTheme { io.github.sherazi5110.cloudstream.ui.WideHome(state) } }
+    }
 }

@@ -40,7 +40,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.cos
-import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -94,8 +94,8 @@ fun IntroScreen(onDone: () -> Unit) {
             .onKeyEvent { done(); true },
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            // A 1000x620 board, scaled to cover the screen.
-            val s = max(size.width / 1000f, size.height / 620f)
+            // A 1000x620 board, scaled to fit inside the screen (the sky fills the rest), so nothing is cut off.
+            val s = min(size.width / 1000f, size.height / 620f)
             val ox = (size.width - 1000f * s) / 2
             val oy = (size.height - 620f * s) / 2
             drawRect(Brush.verticalGradient(listOf(Color(0xFF05060C), lerp(accent, Color(0xFF05060C), 0.82f), Color(0xFF0B0B10))))

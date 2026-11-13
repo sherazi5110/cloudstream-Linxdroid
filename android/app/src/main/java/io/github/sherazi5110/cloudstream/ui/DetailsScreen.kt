@@ -109,6 +109,7 @@ fun DetailsScreen(screen: Screen.Details) {
  * The title page, like the Linux app's: the artwork blurred behind everything, the poster next to the
  * title (or its logo), ratings, plot, genres and one row of actions; then cast, episodes and similar titles.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun Details(api: MainAPI, r: LoadResponse) {
     // Re-read progress, bookmarks and watched marks whenever the library changes (e.g. after playing).
@@ -199,6 +200,9 @@ private fun Details(api: MainAPI, r: LoadResponse) {
 
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val columns = if (wide) ((maxWidth - edge * 2) / 270.dp).toInt().coerceIn(2, 6) else 1
+            // On TV, lists normally scroll so the focused button sits a third of the way down: here that pushed the
+            // poster and title off the top as soon as Play got the focus. This page scrolls only when it must.
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides MinimalScroll) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
                 item(key = "top") {
                     Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = edge - 4.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -304,6 +308,7 @@ private fun Details(api: MainAPI, r: LoadResponse) {
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -474,5 +479,19 @@ private fun EpisodeRow(api: MainAPI, r: LoadResponse, ep: Playable, libraryVersi
             }
         }
         EpisodeMenu(menu, api, r, ep, watched) { menu = false }
+    }
+}
+
+/** Scrolls only as far as needed to show the focused item (no TV "pivot"): the page's top stays visible. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private val MinimalScroll = object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+        val trailing = offset + size
+        return when {
+            offset >= 0f && trailing <= containerSize -> 0f
+            offset < 0f && trailing > containerSize -> 0f
+            kotlin.math.abs(offset) < kotlin.math.abs(trailing - containerSize) -> offset
+            else -> trailing - containerSize
+        }
     }
 }
