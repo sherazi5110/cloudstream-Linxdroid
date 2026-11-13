@@ -254,6 +254,8 @@ private fun PlayerSection() {
     Heading("Preferred quality")
     var quality by remember { mutableStateOf(Settings.preferredQuality) }
     ChoiceChips(listOf(0, 2160, 1080, 720, 480), { if (it == 0) "Best" else "${it}p" }, { it == quality }) { quality = it; Settings.preferredQuality = it }
+    var prepare by remember { mutableStateOf(Settings.prepareSources) }
+    SwitchRow("Find sources before you press Play", "When a title's page opens, its sources are looked up in the background, so Play starts sooner. Found sources are kept for 20 minutes.", prepare) { prepare = it; Settings.prepareSources = it }
     Heading("Anime enhance")
     var enhance by remember { mutableStateOf(Settings.animeEnhance) }
     ChoiceChips(listOf("AUTO", "ON", "OFF"), { mapOf("AUTO" to "Auto", "ON" to "Always", "OFF" to "Off")[it]!! }, { it == enhance }) { enhance = it; Settings.animeEnhance = it }

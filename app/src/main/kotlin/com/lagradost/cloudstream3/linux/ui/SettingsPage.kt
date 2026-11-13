@@ -379,6 +379,8 @@ class SettingsPage : StackPane(), Refreshable {
                     label(if (vlcEngine) "Ready" else "Not installed", if (vlcEngine) "good-text" else "error-text")),
                 row("Battery saver", "For low-end PCs and laptops on battery: skips the H.264 deblocking filter (much less CPU), buffers longer and does no extra processing. Hardware decoding stays on.",
                     Switch(Settings.batterySaver) { Settings.batterySaver = it; Vlc.optionsChanged(Playback.active != null) }),
+                row("Find sources before you press Play", "When a title's page opens, its sources are looked up in the background, so Play starts sooner. Found sources are kept for 20 minutes.",
+                    Switch(Settings.prepareSources) { Settings.prepareSources = it }),
                 row("Anime enhance", "Crisper line art for animation in low quality: small video is upscaled to your screen with Lanczos instead of a soft stretch. Auto: anime and cartoons up to 1440p. In the player: the Picture menu (Z) shows whether it's sharpening the video; E turns it on or off.",
                     combo(com.lagradost.cloudstream3.linux.Picture.modes.map { it.first }, Settings.animeEnhance, { com.lagradost.cloudstream3.linux.Picture.modeName(it) }) { Settings.animeEnhance = it; Vlc.optionsChanged(Playback.active != null) }),
                 row("HDR colour fix", "HDR10, Dolby Vision and HLG video is shown in normal (SDR) colour here, which on its own looks grey and washed out; this corrects contrast and colour. Auto: sources marked HDR or Dolby Vision.",

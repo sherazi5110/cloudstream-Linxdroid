@@ -80,6 +80,11 @@ class DetailsPage(
                 groupIndex = groups().indexOfFirst { g -> g.second.any { it.data == last?.episodeData } }.coerceAtLeast(0)
                 (r.backgroundPosterUrl ?: r.posterUrl)?.let { backdropLayer.children.setAll(backdrop(it, r.posterHeaders, 0.35)) }
                 render()
+                // Start finding the sources of what Play would start, so pressing it starts sooner.
+                if (api !is com.lagradost.cloudstream3.linux.OfflineApi) target()?.let { t ->
+                    kotlinx.coroutines.delay(1200)
+                    if (scene != null) Engine.prefetch(api, t.data)
+                }
                 enrich(r)
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t

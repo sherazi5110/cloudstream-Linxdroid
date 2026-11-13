@@ -404,6 +404,13 @@ class BuiltinPlayer(
                 finish()
                 ui.launch { Toasts.show(com.lagradost.cloudstream3.linux.LiveTv.failureMessage(response.name, first.url, first.getAllHeaders(), plainTried), null, 12.0) }
             }
+            // Every remembered source failed (the 20-minute cache): they've probably expired, so look again, once.
+            sources.fromCache && !sources.refreshed -> {
+                com.lagradost.cloudstream3.linux.Engine.forget(api, playable.data)
+                Toasts.show("Those sources expired; looking again…")
+                finish()
+                Playback.open(api, response, playable, refreshed = true)
+            }
             else -> {
                 Toasts.show("This stream couldn't be played", "Try another source" to { Playback.open(api, response, playable, chooseManually = true) }, 10.0)
                 finish()

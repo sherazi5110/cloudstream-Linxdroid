@@ -45,7 +45,8 @@ object Vlc {
     val lib: LibVLC by lazy {
         LibVLC(App.context, arrayListOf(
             "--http-reconnect",
-            "--network-caching=3000",
+            // 1.5 s of buffer before playing (was 3 s): starts as quickly as the official app's player.
+            "--network-caching=1500",
             "--audio-time-stretch", // keeps the pitch at other speeds
             "--subsdec-encoding=UTF-8",
             "--freetype-rel-fontsize=16",
@@ -146,7 +147,12 @@ class PlayerController(
         }
     }
 
+    /** These sources came from the 20-minute cache (or the search started on the title page). */
+    private var fromCache = false
+    private var refreshed = false
+
     private suspend fun findSources() {
+        fromCache = Engine.cached(api, playable.data)
         Engine.links(api, playable.data).collect { event ->
             when (event) {
                 is LinkEvent.Link -> {
@@ -263,6 +269,14 @@ class PlayerController(
         if (next != null) {
             App.toast("${current?.name ?: "Source"} failed, trying ${next.name}")
             play(next)
+        } else if (fromCache && !refreshed && api !is io.github.sherazi5110.cloudstream.LiveApi) {
+            // Every remembered source failed: they've probably expired. Ask the extension again, once.
+            refreshed = true
+            Engine.forget(api, playable.data)
+            links.clear(); tried.clear(); current = null
+            searching = true; error = null
+            App.toast("Those sources expired; looking again…")
+            scope.launch { findSources() }
         } else {
             // A TV channel has one stream: find out what stops it (an expired certificate, no answer…) and say so.
             if (api is io.github.sherazi5110.cloudstream.LiveApi) {

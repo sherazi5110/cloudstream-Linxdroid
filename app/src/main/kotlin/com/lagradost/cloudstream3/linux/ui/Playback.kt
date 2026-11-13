@@ -27,9 +27,9 @@ import java.net.URI
 object Playback {
     var active: ActivePlayer? = null
 
-    fun open(api: MainAPI, response: LoadResponse, playable: Playable, chooseManually: Boolean = false) {
+    fun open(api: MainAPI, response: LoadResponse, playable: Playable, chooseManually: Boolean = false, refreshed: Boolean = false) {
         if (active != null) return
-        Nav.window.showOverlay(LoadingScreen(api, response, playable, chooseManually))
+        Nav.window.showOverlay(LoadingScreen(api, response, playable, chooseManually, refreshed))
     }
 
     fun title(response: LoadResponse, playable: Playable, total: Int) =
@@ -56,8 +56,9 @@ class LoadingScreen(
     private val response: LoadResponse,
     private val playable: Playable,
     chooseManually: Boolean,
+    refreshed: Boolean = false,
 ) : StackPane(), Disposable {
-    private val sources = SourceCollector(api, playable)
+    private val sources = SourceCollector(api, playable, refreshed)
     private var armed = Settings.autoPlay && !chooseManually
     private var handedOver = false
     private val status = label("Looking for sources…", "loading-status")
