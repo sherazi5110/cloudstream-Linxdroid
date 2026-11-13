@@ -50,6 +50,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.SearchResponse
+import io.github.sherazi5110.cloudstream.App
 import io.github.sherazi5110.cloudstream.Catalogs
 import io.github.sherazi5110.cloudstream.ContentFilter
 import io.github.sherazi5110.cloudstream.Engine
@@ -174,6 +175,7 @@ fun SearchScreen() {
         when {
             query.isBlank() -> if (suggestions.isEmpty()) EmptyState("Search", "Type a title and press Search, or pick a suggestion; every installed extension is searched at once.", Modifier.fillMaxWidth())
             results.isEmpty() && searching > 0 -> Spinner(Modifier.fillMaxWidth().height(200.dp))
+            results.isEmpty() && !App.online() -> OfflineState(Modifier.fillMaxWidth()) { submit(query) }
             results.isEmpty() -> EmptyState("Nothing found", "No extension had results for \"$query\".", Modifier.fillMaxWidth())
             else -> androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
                 items(results, key = { it.first.name }) { (api, list) ->
@@ -199,7 +201,7 @@ fun LibraryScreen() {
         val off = Library.onChange { bookmarks = Library.bookmarks(); history = Library.history() }
         onDispose { off() }
     }
-    var tab by remember { mutableStateOf(0) }
+    var tab by remember { mutableStateOf(if (openLibraryDownloads) 2.also { openLibraryDownloads = false } else 0) }
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf("My list", "History", "Downloads").forEachIndexed { i, label ->
@@ -239,3 +241,6 @@ fun LibraryScreen() {
         }
     }
 }
+
+/** Set before opening the Library tab to show its Downloads (from the offline screen). */
+var openLibraryDownloads = false

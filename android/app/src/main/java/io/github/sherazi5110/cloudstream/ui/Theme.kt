@@ -57,13 +57,19 @@ object ThemeState {
         private set
     var accentHex by mutableStateOf(Accent.OCEAN.hex)
         private set
+    /** The goat logo's circle: the artwork's own rainbow, or the accent colour (circle and inner ears). */
+    var logoRainbow by mutableStateOf(true)
+        private set
 
     /** Reads the current profile's look (at start and after switching profile). */
     fun load() {
         mode = runCatching { ThemeMode.valueOf(prefs.getString("theme_mode", null) ?: "DARK") }.getOrDefault(ThemeMode.DARK)
         // The Linux app's LIGHT mode isn't available here yet: fall back to dark.
         accentHex = prefs.getString("theme_accent", null)?.takeIf { it.matches(Regex("#[0-9a-fA-F]{6}")) } ?: Accent.OCEAN.hex
+        logoRainbow = prefs.getString("theme_logo", null) != "accent"
     }
+
+    fun changeLogo(rainbow: Boolean) { logoRainbow = rainbow; prefs.edit().putString("theme_logo", if (rainbow) "rainbow" else "accent").apply() }
 
     fun changeMode(m: ThemeMode) { mode = m; prefs.edit().putString("theme_mode", m.name).apply() }
     fun changeAccent(hex: String) { accentHex = hex; prefs.edit().putString("theme_accent", hex).apply() }

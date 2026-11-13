@@ -28,6 +28,13 @@ object App {
         }
     }
 
+    /** A network with internet access is connected (asked only after something failed to load). */
+    fun online(): Boolean = runCatching {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return true
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }.getOrDefault(true)
+
     fun detectTv(): Boolean {
         val ui = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
         return ui.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||

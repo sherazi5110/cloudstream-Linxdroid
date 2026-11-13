@@ -523,21 +523,114 @@ def bake_rainbow(prefix, size, radius, center):
         Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, name + "-rainbow.png"), optimize=True)
 
 
+def icons():
+    """Every app icon from the logo: Linux/Windows, the web app, Android's launcher (legacy and adaptive) and the
+    Android TV banner. The logo sits on the dark rounded tile the icons have always had."""
+    from PIL import ImageDraw, ImageFont
+    import base64, io
+    logo = Image.open(os.path.join(OUT, "logo", "logo.png")).convert("RGBA")
+    bg = (11, 11, 16, 255)
+
+    def tile(size, rounded=True, scale=0.94):
+        im = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        if rounded:
+            big = Image.new("L", (size * 4, size * 4), 0)
+            ImageDraw.Draw(big).rounded_rectangle([0, 0, size * 4 - 1, size * 4 - 1], radius=round(size * 4 * 112 / 512), fill=255)
+            im.paste(Image.new("RGBA", (size, size), bg), (0, 0), big.resize((size, size), Image.LANCZOS))
+        else:
+            im = Image.new("RGBA", (size, size), bg)
+        l = logo.resize((round(size * scale),) * 2, Image.LANCZOS)
+        im.alpha_composite(l, ((size - l.width) // 2, (size - l.height) // 2))
+        return im
+
+    def put(rel, im):
+        path = os.path.join(ROOT, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        im.save(path, optimize=True)
+        print(rel, im.size)
+
+    put("packaging/linux/cloudstream-linux.png", tile(512))
+    put("app/src/main/resources/ui/icon.png", tile(256))
+    put("webapp/icon-192.png", tile(192))
+    put("webapp/icon-512.png", tile(512))
+    put("webapp/apple-touch-icon.png", tile(180, rounded=False))
+    dens = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
+    for d, k in dens.items():
+        put(f"android/app/src/main/res/mipmap-{d}/ic_launcher.png", tile(round(48 * k)))
+        # Adaptive icon foreground: 108 dp, the logo inside the 66 dp safe zone.
+        size = round(108 * k)
+        fg = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        l = logo.resize((round(size * 66 / 108),) * 2, Image.LANCZOS)
+        fg.alpha_composite(l, ((size - l.width) // 2, (size - l.height) // 2))
+        put(f"android/app/src/main/res/mipmap-{d}/ic_launcher_foreground.png", fg)
+    put("android/app/src/main/res/drawable-nodpi/logo.png", logo.resize((256, 256), Image.LANCZOS))
+    # Windows: one .ico with the usual sizes.
+    ico = tile(256)
+    path = os.path.join(ROOT, "packaging/windows/cloudstream.ico")
+    ico.save(path, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    print("packaging/windows/cloudstream.ico")
+    # Scalable icon (Flatpak, the website): an SVG holding the 512 px picture.
+    buf = io.BytesIO(); tile(512).save(buf, "PNG", optimize=True)
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">'
+           '<title>Stream Goat</title><image width="512" height="512" href="data:image/png;base64,'
+           + base64.b64encode(buf.getvalue()).decode() + '"/></svg>\n')
+    open(os.path.join(ROOT, "packaging/linux/cloudstream-linux.svg"), "w").write(svg)
+    print("packaging/linux/cloudstream-linux.svg", len(svg) // 1024, "KB")
+    # Android TV banner (320x180 dp, xhdpi 640x360): the logo and the name.
+    W, H = 640, 360
+    yy, xx = np.mgrid[0:H, 0:W]
+    d = np.clip(np.hypot(xx - W * 0.3, yy - H * 0.4) / (0.7 * W), 0, 1)[..., None]
+    c0, c1 = np.array([26, 42, 92], np.float32), np.array([11, 11, 16], np.float32)
+    banner = Image.fromarray((c0 * (1 - d) + c1 * d).astype(np.uint8), "RGB").convert("RGBA")
+    l = logo.resize((250, 250), Image.LANCZOS)
+    banner.alpha_composite(l, (50, (H - 250) // 2))
+    font_path = os.path.join(ROOT, "app/src/main/resources/ui/fonts/InterDisplay-ExtraBold.otf")
+    font = ImageFont.truetype(font_path, 74) if os.path.exists(font_path) else ImageFont.load_default()
+    draw = ImageDraw.Draw(banner)
+    draw.text((320, 95), "Stream", font=font, fill="white")
+    draw.text((320, 180), "Goat", font=font, fill="white")
+    put("android/app/src/main/res/drawable-xhdpi/tv_banner.png", banner.convert("RGB"))
+
+
 if __name__ == "__main__":
     only = sys.argv[1] if len(sys.argv) > 1 else None
     report = {}
-    # Animations: 640 canvas, circle radius 210 at (320, 320) (props like signs and cables reach outside it).
-    for src, prefix, size in (("goat-eating.webp", "eat", 640), ("goat-offline.jpg", "offline", 880)):
+    # The frames' circles in the apps (canvas size, circle radius); the apps read art/out/frames.json.
+    frames_info = {}
+    for src, prefix, size, radius in (("goat-eating.webp", "eat", 480, 154), ("goat-offline.jpg", "offline", 640, 149)):
         if only and only not in src:
             continue
-        for label, rgba, pink, lum, circle in sheet(src, [4, 3, 3], size, 205, (size / 2, size / 2 - 4), prefix):
-            save(label, rgba, pink, lum, circle=(size / 2, size / 2 - 4, 205))
+        centre = (size / 2, size / 2 - 3)
+        for label, rgba, pink, lum, circle in sheet(src, [4, 3, 3], size, radius, centre, prefix):
+            save(label, rgba, pink, lum, circle=(centre[0], centre[1], radius))
             report[label] = [round(v, 1) for v in circle]
+        frames_info[prefix] = {"size": size, "cx": centre[0], "cy": centre[1], "r": radius, "count": 10}
+    if frames_info:
+        info_path = os.path.join(OUT, "frames.json")
+        old = json.load(open(info_path)) if os.path.exists(info_path) else {}
+        old.update(frames_info)
+        json.dump(old, open(info_path, "w"), indent=1)
     if not only or only == "logo":
         logo()
-    if not only or only in ("logo", "bake"):
-        bake_rainbow("eat", 640, 205, (320, 316))
-        bake_rainbow("offline", 880, 205, (440, 436))
+    if only == "bake":
+        # Previews only (the apps paint the rainbow themselves): art/out/*-rainbow.png
+        bake_rainbow("eat", 480, 154, (240, 237))
+        bake_rainbow("offline", 640, 149, (320, 317))
+    if not only or only == "copy":
+        # Into the apps: frames (picture + the circle's and ears' tint layers), the logo layers, the rainbow texture.
+        for dest in ("app/src/main/resources/ui/art", "android/app/src/main/assets/art"):
+            d = os.path.join(ROOT, dest)
+            shutil.rmtree(d, ignore_errors=True)
+            os.makedirs(d)
+            for f in sorted(os.listdir(OUT)):
+                if f.endswith(".png") and (f.startswith("eat") or f.startswith("offline")) and "-rainbow" not in f:
+                    shutil.copy(os.path.join(OUT, f), d)
+            for f in ("logo.png", "logo-circle.png", "logo-ears.png", "rainbow.png"):
+                shutil.copy(os.path.join(OUT, "logo", f), d)
+            shutil.copy(os.path.join(OUT, "frames.json"), d)
+            print("copied to", dest)
+    if only == "icons":
+        icons()
     if not only or only == "avatars":
         avatars()
         # Into the apps: the desktop app's resources and the Android app's assets.

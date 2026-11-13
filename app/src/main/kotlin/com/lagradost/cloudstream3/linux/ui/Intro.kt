@@ -1,6 +1,7 @@
 package com.lagradost.cloudstream3.linux.ui
 
 import com.lagradost.cloudstream3.linux.Settings
+import javafx.animation.Animation
 import javafx.animation.FadeTransition
 import javafx.animation.Interpolator
 import javafx.animation.KeyFrame
@@ -17,18 +18,17 @@ import javafx.scene.Group
 import javafx.scene.Node
 import javafx.scene.effect.DropShadow
 import javafx.scene.effect.GaussianBlur
+import javafx.scene.image.Image
+import javafx.scene.image.ImageView
 import javafx.scene.layout.Pane
 import javafx.scene.layout.Region
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.paint.CycleMethod
-import javafx.scene.paint.LinearGradient
 import javafx.scene.paint.RadialGradient
 import javafx.scene.paint.Stop
 import javafx.scene.shape.Circle
-import javafx.scene.shape.Rectangle
 import javafx.scene.shape.SVGPath
-import javafx.scene.shape.StrokeLineJoin
 import javafx.scene.transform.Rotate
 import javafx.util.Duration
 import kotlin.math.cos
@@ -36,14 +36,56 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * The startup screen: a short intro (about 3 seconds) while extensions load. Snowy peaks rise out of a night
- * sky, an arc of stars sweeps over the summit, the goat appears on top and the name and credit fade in.
- * A click or a key skips it; Settings → Appearance → Startup animation turns it off (then it's a plain splash).
+ * A picture-by-picture animation of the goat artwork: each frame shows for [frameMs], blending into the next
+ * over [fadeMs]. Loops until stopped (or plays once).
+ */
+class FlipBook(private val frames: List<Image>, size: Double, private val frameMs: Double, private val fadeMs: Double = 120.0,
+               private val loop: Boolean = true) : StackPane() {
+    private val back = ImageView().apply { fitWidth = size; fitHeight = size; isSmooth = true }
+    private val front = ImageView().apply { fitWidth = size; fitHeight = size; isSmooth = true }
+    private var index = 0
+    private val ticker = Timeline(KeyFrame(Duration.millis(frameMs), { next() })).apply { cycleCount = Animation.INDEFINITE }
+
+    init {
+        children.addAll(back, front)
+        setMinSize(size, size); setMaxSize(size, size)
+        isMouseTransparent = true
+        front.image = frames.firstOrNull()
+    }
+
+    /** Plays only while it's on screen (a looping animation left running would keep the CPU busy). */
+    fun playWhileShown(): FlipBook = apply {
+        sceneProperty().addListener { _, _, s -> if (s == null) stop() else play() }
+        if (scene != null) play()
+    }
+
+    fun play() = ticker.play()
+    fun stop() = ticker.stop()
+
+    /** Shows frame [i] at once (for still pictures). */
+    fun show(i: Int) { index = i.mod(frames.size); front.image = frames[index]; front.opacity = 1.0 }
+
+    private fun next() {
+        if (frames.size < 2) return
+        if (!loop && index == frames.lastIndex) { ticker.stop(); return }
+        index = (index + 1) % frames.size
+        back.image = front.image
+        front.image = frames[index]
+        front.opacity = 0.0
+        FadeTransition(Duration.millis(fadeMs), front).apply { toValue = 1.0 }.play()
+    }
+}
+
+/**
+ * The startup screen: a short intro (about 3 seconds) while extensions load. Syed Ali Hamza's goat chews its grass
+ * (the eating animation, in the logo's colours) while an arc of stars sweeps over it, then the name and credit
+ * fade in. A click or a key skips it; Settings → Profiles → Startup animation turns it off (then it's a still splash).
  */
 class SplashScreen(animate: Boolean = Settings.startupAnimation) : StackPane() {
     private val statusLabel = label("Starting…", "splash-status")
     private var onDone: (() -> Unit)? = null
     private var animation: javafx.animation.Animation? = null
+    private val goat = FlipBook(GoatArt.frames("eat", 480), GOAT, frameMs = 300.0, loop = false)
 
     /** True once the intro has played (or was skipped / is off). */
     var finished = !animate
@@ -55,57 +97,32 @@ class SplashScreen(animate: Boolean = Settings.startupAnimation) : StackPane() {
         styleClass += "splash"
         isFocusTraversable = true
         val stage = Pane().apply { isMouseTransparent = true }
-        // The scene is drawn on a 1000x620 board that scales to the window.
+        // The scene is drawn on a 1000x620 board that scales to fit the window (nothing is cut off).
         val board = Group()
         stage.children += board
         widthProperty().addListener { _, _, _ -> fit(board) }
         heightProperty().addListener { _, _, _ -> fit(board) }
 
-        val sky = Rectangle(1000.0, 620.0).apply {
-            fill = LinearGradient(0.0, 0.0, 0.0, 1.0, true, CycleMethod.NO_CYCLE,
-                Stop(0.0, Color.web("#05060c")), Stop(0.65, accent.interpolate(Color.web("#05060c"), 0.82)), Stop(1.0, Color.web("#0b0b10")))
-        }
-        val glow = Circle(500.0, 300.0, 300.0).apply {
+        val glow = Circle(500.0, 250.0, 330.0).apply {
             fill = RadialGradient(0.0, 0.0, 0.5, 0.5, 0.5, true, CycleMethod.NO_CYCLE,
-                Stop(0.0, accent.deriveColor(0.0, 1.0, 1.0, 0.35)), Stop(1.0, Color.TRANSPARENT))
+                Stop(0.0, accent.deriveColor(0.0, 1.0, 1.0, 0.38)), Stop(1.0, Color.TRANSPARENT))
             opacity = 0.0
         }
         val twinkles = Group((0 until 70).map {
-            Circle(Random.nextDouble(0.0, 1000.0), Random.nextDouble(0.0, 330.0), Random.nextDouble(0.6, 1.8), Color.WHITE)
-                .apply { opacity = Random.nextDouble(0.15, 0.7) }
+            Circle(Random.nextDouble(0.0, 1000.0), Random.nextDouble(0.0, 620.0), Random.nextDouble(0.6, 1.8), Color.WHITE)
+                .apply { opacity = Random.nextDouble(0.12, 0.6) }
         })
-        // The logo's peaks, much bigger: centre peak at x=500.
-        val peaks = Group(
-            SVGPath().apply {
-                content = Logo.MOUNTAIN
-                fill = LinearGradient(0.0, 222.0, 0.0, 460.0, false, CycleMethod.NO_CYCLE,
-                    Stop(0.0, accent.interpolate(Color.WHITE, 0.15)), Stop(1.0, accent.interpolate(Color.BLACK, 0.6)))
-            },
-            SVGPath().apply { content = Logo.SNOW; fill = Color.WHITE },
-            SVGPath().apply { content = "M256 222 L282 263 L270 258 L256 270 L242 258 L230 263 Z"; fill = Color.WHITE },
-        ).apply {
-            transforms += javafx.scene.transform.Translate(500.0 - 256 * 1.9, 620.0 - 460 * 1.9)
-            transforms += javafx.scene.transform.Scale(1.9, 1.9, 0.0, 0.0)
-        }
-        val peakLayer = Group(peaks).apply { translateY = 380.0 }
-        // The goat (white, as in the logo) standing at the summit.
-        val goat = Group(*(Logo.GOAT_PARTS.map { d ->
-            SVGPath().apply { content = d; fill = Color.WHITE; stroke = Color.web("#0b0b10"); strokeWidth = Logo.STROKE; strokeLineJoin = StrokeLineJoin.ROUND }
-        } + SVGPath().apply { content = Logo.EYES; fill = Color.web("#0b0b10") }).toTypedArray()).apply {
-            // Head centre (256, 300) on the logo grid → just above the summit.
-            transforms += javafx.scene.transform.Translate(500.0 - 256 * 0.62, 196.0 - 300 * 0.62)
-            transforms += javafx.scene.transform.Scale(0.62, 0.62, 0.0, 0.0)
-        }
-        val goatLayer = Group(goat).apply {
+        // The goat in the middle of the board.
+        val goatLayer = Group(goat.apply { layoutX = 500.0 - GOAT / 2; layoutY = 250.0 - GOAT / 2 }).apply {
             opacity = 0.0; scaleX = 0.6; scaleY = 0.6
-            effect = DropShadow(30.0, accent.deriveColor(0.0, 1.0, 1.0, 0.8))
+            effect = DropShadow(40.0, accent.deriveColor(0.0, 1.0, 1.0, 0.7))
         }
-        // An arc of stars sweeping over the summit, like the classic studio intro.
+        // An arc of stars sweeping over the goat, like the classic studio intro.
         val center = javafx.geometry.Point2D(500.0, 250.0)
-        val radius = 230.0
+        val radius = 225.0
         val count = 15
         val stars = (0 until count).map { i ->
-            val angle = 200.0 + 140.0 * i / (count - 1)        // from left (200°) over the top to right (340°)
+            val angle = 195.0 + 150.0 * i / (count - 1)        // from left (195°) over the top to right (345°)
             val holder = Group(star(9.0)).apply { opacity = 0.0 }
             val rotate = Rotate(-120.0, center.x, center.y)
             val node = Group(holder).apply {
@@ -117,8 +134,7 @@ class SplashScreen(animate: Boolean = Settings.startupAnimation) : StackPane() {
             Triple(node, holder, rotate)
         }
         val starLayer = Group(*stars.map { it.first }.toTypedArray())
-
-        board.children.addAll(sky, glow, twinkles, starLayer, peakLayer, goatLayer)
+        board.children.addAll(glow, twinkles, starLayer, goatLayer)
 
         val title = label("Stream Goat", "intro-title").apply { opacity = 0.0; translateY = 18.0 }
         val credit = label("Created by Syed Ali Hamza", "intro-credit").apply { opacity = 0.0 }
@@ -126,40 +142,41 @@ class SplashScreen(animate: Boolean = Settings.startupAnimation) : StackPane() {
         val bottom = vbox(8.0, statusLabel).apply { alignment = Pos.CENTER; maxHeight = Region.USE_PREF_SIZE; isMouseTransparent = true }
         children.addAll(stage, words, bottom)
         StackPane.setAlignment(words, Pos.BOTTOM_CENTER)
-        StackPane.setMargin(words, Insets(0.0, 0.0, 86.0, 0.0))
+        StackPane.setMargin(words, Insets(0.0, 0.0, 70.0, 0.0))
         StackPane.setAlignment(bottom, Pos.BOTTOM_CENTER)
-        StackPane.setMargin(bottom, Insets(0.0, 0.0, 30.0, 0.0))
+        StackPane.setMargin(bottom, Insets(0.0, 0.0, 26.0, 0.0))
 
         if (!animate) {
-            peakLayer.translateY = 0.0; goatLayer.opacity = 1.0; goatLayer.scaleX = 1.0; goatLayer.scaleY = 1.0
+            goatLayer.opacity = 1.0; goatLayer.scaleX = 1.0; goatLayer.scaleY = 1.0
             title.opacity = 1.0; title.translateY = 0.0; credit.opacity = 1.0; glow.opacity = 1.0
             stars.forEach { (_, h, r) -> h.opacity = 1.0; r.angle = 0.0 }
         } else {
-            val rise = TranslateTransition(Duration.millis(1100.0), peakLayer).apply { toY = 0.0; interpolator = Interpolator.SPLINE(0.2, 0.8, 0.2, 1.0) }
-            val glowIn = FadeTransition(Duration.millis(1400.0), glow).apply { toValue = 1.0 }
+            val glowIn = FadeTransition(Duration.millis(1200.0), glow).apply { toValue = 1.0 }
+            val goatIn = ParallelTransition(
+                FadeTransition(Duration.millis(450.0), goatLayer).apply { toValue = 1.0 },
+                SequentialTransition(
+                    ScaleTransition(Duration.millis(420.0), goatLayer).apply { toX = 1.08; toY = 1.08; interpolator = Interpolator.SPLINE(0.2, 0.8, 0.3, 1.0) },
+                    ScaleTransition(Duration.millis(200.0), goatLayer).apply { toX = 1.0; toY = 1.0 },
+                ),
+            )
             val sweep = Timeline(*stars.flatMapIndexed { i, (_, holder, rotate) ->
-                val start = 500.0 + i * 55.0
+                val start = 350.0 + i * 55.0
                 listOf(
                     KeyFrame(Duration.millis(start), KeyValue(rotate.angleProperty(), -120.0), KeyValue(holder.opacityProperty(), 0.0)),
                     KeyFrame(Duration.millis(start + 700.0), KeyValue(rotate.angleProperty(), 0.0, Interpolator.SPLINE(0.1, 0.7, 0.3, 1.0)), KeyValue(holder.opacityProperty(), 1.0)),
                 )
             }.toTypedArray())
-            val goatIn = ParallelTransition(
-                FadeTransition(Duration.millis(650.0), goatLayer).apply { toValue = 1.0 },
-                SequentialTransition(
-                    ScaleTransition(Duration.millis(450.0), goatLayer).apply { toX = 1.08; toY = 1.08; interpolator = Interpolator.SPLINE(0.2, 0.8, 0.3, 1.0) },
-                    ScaleTransition(Duration.millis(200.0), goatLayer).apply { toX = 1.0; toY = 1.0 },
-                ),
-            ).let { SequentialTransition(PauseTransition(Duration.millis(1150.0)), it) }
-            val wordsIn = SequentialTransition(PauseTransition(Duration.millis(1700.0)), ParallelTransition(
+            val wordsIn = SequentialTransition(PauseTransition(Duration.millis(1400.0)), ParallelTransition(
                 FadeTransition(Duration.millis(600.0), title).apply { toValue = 1.0 },
                 TranslateTransition(Duration.millis(600.0), title).apply { toY = 0.0 },
                 SequentialTransition(PauseTransition(Duration.millis(250.0)), FadeTransition(Duration.millis(600.0), credit).apply { toValue = 1.0 }),
             ))
-            val all = ParallelTransition(rise, glowIn, sweep, goatIn, wordsIn, PauseTransition(Duration.millis(3200.0)))
+            // The goat chews through its ten pictures (300 ms each) while the rest plays.
+            val all = ParallelTransition(glowIn, goatIn, sweep, wordsIn, PauseTransition(Duration.millis(3300.0)))
             all.setOnFinished { finish() }
             animation = all
             all.play()
+            goat.play()
             // Click or any key skips to the end.
             setOnMouseClicked { skip() }
             setOnKeyPressed { skip() }
@@ -170,7 +187,7 @@ class SplashScreen(animate: Boolean = Settings.startupAnimation) : StackPane() {
     private fun fit(board: Group) {
         val w = width.takeIf { it > 0 } ?: return
         val h = height.takeIf { it > 0 } ?: return
-        val scale = maxOf(w / 1000.0, h / 620.0)
+        val scale = minOf(w / 1000.0, h / 620.0)
         board.scaleX = scale; board.scaleY = scale
         board.layoutX = (w - 1000.0) / 2; board.layoutY = (h - 620.0) / 2
     }
@@ -187,12 +204,14 @@ class SplashScreen(animate: Boolean = Settings.startupAnimation) : StackPane() {
 
     private fun skip() {
         animation?.jumpTo("end")
+        goat.stop()
         finish()
     }
 
     private fun finish() {
         if (finished) return
         finished = true
+        goat.stop()
         onDone?.invoke()
     }
 
@@ -203,5 +222,10 @@ class SplashScreen(animate: Boolean = Settings.startupAnimation) : StackPane() {
 
     fun status(text: String) {
         statusLabel.text = text
+    }
+
+    private companion object {
+        /** The goat's size on the 1000x620 board. */
+        const val GOAT = 440.0
     }
 }

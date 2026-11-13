@@ -112,6 +112,7 @@ private fun PhoneHome(state: HomeState) {
             CatalogRow(section, posterWidth = 112.dp)
         }
         if (state.loading && state.sections.isEmpty()) item { Spinner(Modifier.fillMaxWidth().height(200.dp)) }
+        if (state.offline && state.sections.isEmpty()) item { OfflineState(Modifier.fillMaxWidth()) { state.catalogVersion++ } }
     }
 }
 
@@ -297,6 +298,7 @@ internal fun WideHome(state: HomeState) {
                 CatalogRow(section, 140.dp, onFocus = if (isTv) { item -> focused = item } else null)
             }
             if (state.loading && state.sections.isEmpty()) item { Spinner(Modifier.fillMaxWidth().height(200.dp)) }
+            if (state.offline && state.sections.isEmpty()) item { OfflineState(Modifier.fillMaxWidth()) { state.catalogVersion++ } }
         }
         // Fixed top bar; it gets a backdrop once the banner has scrolled away.
         val scrolled = list.firstVisibleItemIndex > 0

@@ -1,5 +1,7 @@
 package io.github.sherazi5110.cloudstream.ui
 
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -208,7 +210,23 @@ private fun AppearanceSection() {
                 .then(if (on) Modifier.border(3.dp, Color.White, CircleShape) else Modifier))
         }
     }
-    Hint("Each profile has its own look.")
+    Heading("Logo")
+    // The circle behind the goat (and its inner ears): the artwork's rainbow, or the accent colour.
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        listOf(true to "Rainbow", false to "Theme colour").forEach { (rainbow, name) ->
+            val on = ThemeState.logoRainbow == rainbow
+            val accent = Palette.accent.toArgb()
+            val preview = remember(rainbow, accent) { runCatching { GoatArt.logo(160, rainbow, accent).asImageBitmap() }.getOrNull() }
+            Column(Modifier.card(RoundedCornerShape(14.dp)) { ThemeState.changeLogo(rainbow) }
+                .background(if (on) Palette.accent.copy(alpha = 0.22f) else Palette.surfaceHigh, RoundedCornerShape(14.dp))
+                .then(if (on) Modifier.border(2.dp, Palette.accent, RoundedCornerShape(14.dp)) else Modifier)
+                .padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                preview?.let { androidx.compose.foundation.Image(it, null, Modifier.size(64.dp)) }
+                Text(name, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+    }
+    Hint("Each profile has its own look. The start animation and the offline goat follow the logo.")
     Heading("Layout")
     var layout by remember { mutableStateOf(Settings.layout) }
     val auto = if (App.detectTv()) "TV" else "Phone"

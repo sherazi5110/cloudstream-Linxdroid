@@ -160,6 +160,10 @@ fun LiveTvScreen() {
                 button = "Add a source") { ProfileUi.guarded { if (isWideNow) Nav.select(Tab.MORE) else Nav.open(Screen.SettingsPage(Section.LIVETV.name)) } }
         }
         all == null -> Spinner(Modifier.fillMaxSize())
+        // Nothing came back and there's no connection: say so (the channel lists are kept once loaded).
+        all.isEmpty() && !App.online() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            OfflineState { force = true; version++ }
+        }
         else -> LiveContent(all, now, guideVersion, scope) { force = true; version++ }
     }
 }

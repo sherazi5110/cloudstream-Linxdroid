@@ -287,7 +287,8 @@ python3 -I tests/mock-archive/server.py 8766   # local mock site for the demo/ex
 
 # Scripted screenshot tour (any X display or xvfb-run):
 CS_SCREENSHOT=/tmp/shot CS_SCREENSHOT_SEARCH=pixel cloudstream-linux   # player shots need libVLC and xdotool
-node scripts/render-icons.js        # re-render the app icons from packaging/linux/cloudstream-linux.svg
+python3 scripts/art.py              # cut the goat artwork (art/source) into the apps' logo, animations and avatars
+python3 scripts/art.py icons        # every app icon (Linux, Windows .ico, web, Android launcher, TV banner) from the logo
 ```
 
 CI (`.github/workflows/build.yml`) runs the tests on every push and publishes the `.deb` and tarball for every `v*` tag.

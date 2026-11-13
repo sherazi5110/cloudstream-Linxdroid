@@ -34,6 +34,7 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
     private var country: String? = null
     private var group: String? = ALL
     private var loading = false
+    private var offline = false
     private var job: Job? = null
     private val heroHolder = StackPane().apply { minWidth = 0.0 }
     private val chips = ChipGroup { i -> group = chipKeys.getOrNull(i); renderBody() }
@@ -95,6 +96,7 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
         renderBody()
         job = ui.launch {
             all = LiveTv.channels(sourceId, force)
+            offline = all.isEmpty() && LiveTv.sources().any { it.enabled } && !com.lagradost.cloudstream3.linux.Network.online()
             loading = false
             val countries = all.mapNotNull { it.country }.distinct()
             countryButton.isVisible = countries.size > 1; countryButton.isManaged = countryButton.isVisible
@@ -251,6 +253,11 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
             }
             loading && list.isEmpty() -> {
                 show(hbox(10.0, ProgressIndicator().apply { setPrefSize(22.0, 22.0) }, label("Loading channels…", "muted")))
+                return
+            }
+            list.isEmpty() && offline -> {
+                chips.isVisible = false
+                show(offlineState { reload(force = true) })
                 return
             }
             list.isEmpty() -> {

@@ -344,6 +344,28 @@ fun emptyState(iconPath: String, title: String, message: String, action: Node? =
         action?.let { children += it }
     }
 
+/**
+ * No internet: the goat's offline animation (Syed Ali Hamza's ten pictures, in the logo's colours), Try again,
+ * and the way to the downloads, which still play.
+ */
+fun offlineState(onRetry: () -> Unit): Node {
+    // The pictures have room around the circle for their signs and cables: the box overlaps the text a little.
+    val goat = FlipBook(GoatArt.frames("offline", 640), 340.0, frameMs = 1700.0, fadeMs = 280.0).playWhileShown()
+        .apply { VBox.setMargin(this, javafx.geometry.Insets(-50.0, 0.0, -56.0, 0.0)) }
+    return VBox(12.0, goat, label("You're offline", "h3"),
+        label("Stream Goat can't reach the internet. Check your Wi-Fi or cable, then try again. Downloaded titles still play.", "muted")
+            .apply { isWrapText = true; maxWidth = 440.0; alignment = Pos.CENTER; textAlignment = javafx.scene.text.TextAlignment.CENTER },
+        hbox(10.0,
+            button("Try again", Icons.REFRESH, "btn-accent") { onRetry() },
+            button("Downloads", Icons.DOWNLOAD, "btn-ghost") { LibraryPage.wantDownloads = true; Nav.window.show(Tab.LIBRARY) },
+        ).apply { alignment = Pos.CENTER },
+    ).apply {
+        styleClass += "empty-state"
+        alignment = Pos.CENTER
+        pad(40.0)
+    }
+}
+
 /** Bottom-center notifications. */
 object Toasts {
     lateinit var host: VBox

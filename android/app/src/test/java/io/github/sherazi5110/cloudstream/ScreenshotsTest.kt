@@ -14,6 +14,9 @@ import org.junit.Test
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.asImageBitmap
+import io.github.sherazi5110.cloudstream.ui.GoatArt
 import com.lagradost.cloudstream3.newMovieSearchResponse
 
 /**
@@ -115,6 +118,39 @@ class AvatarPicturesTest {
                 ) {
                     io.github.sherazi5110.cloudstream.ui.Avatars.pictures.forEach { io.github.sherazi5110.cloudstream.ui.Avatar("art:$it", 64.dp) }
                     io.github.sherazi5110.cloudstream.ui.Avatar("cat:green", 64.dp)
+                }
+            }
+        }
+    }
+}
+
+/** Syed Ali Hamza's goat artwork: the logo in both styles, intro frames and offline frames in the rainbow and an accent. */
+class GoatArtTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, maxPercentDifference = 0.1)
+
+    @Test
+    fun artwork() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+        val green = 0xFF22C55E.toInt()
+        val rows = listOf(true to green, false to green, false to 0xFFE8194F.toInt())
+        paparazzi.snapshot("goat-art") {
+            CloudStreamTheme {
+                androidx.compose.foundation.layout.Column(
+                    androidx.compose.ui.Modifier.background(io.github.sherazi5110.cloudstream.ui.Palette.background).padding(8.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+                ) {
+                    rows.forEach { (rainbow, accent) ->
+                        androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+                            val pics = listOf(GoatArt.logo(240, rainbow, accent)) +
+                                listOf(0, 5, 8).map { GoatArt.frame("eat", it, 240, rainbow, accent) } +
+                                listOf(2, 5).map { GoatArt.frame("offline", it, 240, rainbow, accent) }
+                            pics.forEach { b ->
+                                androidx.compose.foundation.Image(b.asImageBitmap(), null, androidx.compose.ui.Modifier.size(62.dp))
+                            }
+                        }
+                    }
                 }
             }
         }

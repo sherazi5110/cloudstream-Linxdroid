@@ -64,6 +64,7 @@ class HomePage : StackPane(), Refreshable, TopBarActions {
     private var heroIndex = Int.MAX_VALUE
     private var continueShelf: Node? = null
     private var loading = false
+    private var offline = false
     private val sourceButton = button("", null, "topbar-source") { showSourceMenu() }.apply {
         contentDisplay = javafx.scene.control.ContentDisplay.RIGHT
         graphic = icon(Icons.EXPAND, 12.0)
@@ -146,6 +147,7 @@ class HomePage : StackPane(), Refreshable, TopBarActions {
         hero = null
         heroIndex = Int.MAX_VALUE
         loading = true
+        offline = false
         render()
         job = ui.launch {
             val mixed = source.apis.size > 1
@@ -162,6 +164,8 @@ class HomePage : StackPane(), Refreshable, TopBarActions {
                 render()
             }
             loading = false
+            // Nothing came back: say so plainly when it's because there's no internet.
+            offline = sections.isEmpty() && !com.lagradost.cloudstream3.linux.Network.online()
             render()
         }
     }
@@ -208,6 +212,7 @@ class HomePage : StackPane(), Refreshable, TopBarActions {
             nodes += if (all.isNotEmpty() && all.all { Catalogs.enabled(it).isEmpty() }) emptyState(Icons.TUNE, "All catalogs are hidden",
                 "You turned off every catalog for ${current?.label}.",
                 button("Customize", Icons.TUNE, "btn-accent") { Nav.window.showOverlay(HomeManager(providers, all.singleOrNull())) })
+            else if (offline) offlineState { current?.let { select(it, force = true) } }
             else emptyState(Icons.INFO, "Nothing here", "${current?.label} returned no home sections. Its site may be down or blocked — try Settings → Network & DNS, or use Search.")
         }
         body.children.setAll(nodes)

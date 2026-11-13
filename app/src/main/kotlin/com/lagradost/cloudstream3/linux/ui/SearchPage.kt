@@ -160,7 +160,9 @@ class SearchPage : StackPane(), Refreshable {
                 }
                 updateStatus()
             }
-            if (found == 0) results.children.setAll(emptyState(Icons.SEARCH, "No results for \"$query\"", "Try a different spelling, or check that the extensions' sites are reachable (Settings → DNS)."))
+            if (found == 0) results.children.setAll(
+                if (!com.lagradost.cloudstream3.linux.Network.online()) offlineState { run(query) }
+                else emptyState(Icons.SEARCH, "No results for \"$query\"", "Try a different spelling, or check that the extensions' sites are reachable (Settings → DNS)."))
         }
     }
 }
