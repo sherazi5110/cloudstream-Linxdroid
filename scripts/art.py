@@ -288,6 +288,85 @@ def sheet(name, layout, size, radius, center, prefix, names=None, align=True):
     return results
 
 
+def grid_tiles(rgb, rows, cols):
+    """Pictures on a regular grid (avatar sheets): each cell's circle, found where its colour meets the page."""
+    h, w = rgb.shape[:2]
+    page = (rgb.min(axis=2) > 222) & ((rgb.max(axis=2) - rgb.min(axis=2)) < 22)
+    edge_all = ~page & ndimage.binary_dilation(page, iterations=2)
+    owner = np.full((h, w), -1)
+    circles = []
+    rng = np.random.default_rng(3)
+    for r in range(rows):
+        for c in range(cols):
+            y0, y1 = round(r * h / rows), round((r + 1) * h / rows)
+            x0, x1 = round(c * w / cols), round((c + 1) * w / cols)
+            owner[y0:y1, x0:x1] = len(circles)
+            ey, ex = np.nonzero(edge_all[y0:y1, x0:x1])
+            ey, ex = ey + y0, ex + x0
+            cell = min(y1 - y0, x1 - x0)
+            best, best_in = None, -1
+            for _ in range(1500):
+                k = rng.choice(len(ex), 3, replace=False)
+                try:
+                    cc = fit_circle(ex[k], ey[k])
+                except Exception:
+                    continue
+                if not (0.28 * cell < cc[2] < 0.5 * cell) or not (x0 < cc[0] < x1 and y0 < cc[1] < y1):
+                    continue
+                inl = np.abs(np.hypot(ex - cc[0], ey - cc[1]) - cc[2]) < 1.8
+                if inl.sum() > best_in:
+                    best, best_in = inl, inl.sum()
+            circles.append(fit_circle(ex[best], ey[best]))
+    return circles, owner
+
+
+# Avatars: (sheet, rows, cols, names; None = a repeat of another picture, skipped).
+AVATARS = [
+    ("avatars-goats-colour.webp", 3, 3, ["goat-white", "goat-blue", "goat-gold", "goat-green", "goat-pink", "goat-grey",
+                                         "goat-midnight", "goat-orange", "goat-coral"]),
+    ("avatars-goats-style.jpg", 3, 3, [None, None, None, "goat-king", "goat-dj", "goat-cap", "goat-cowboy", "goat-professor",
+                                       "goat-party"]),
+    ("avatars-farm.jpg", 4, 4, ["cow", "sheep", "pig", "dog", "kitten", "cat", "duck", "chicken", "ram", "rabbit", "horse", None,
+                                "donkey", "llama", "rooster", "bear"]),
+    ("avatars-wild.jpg", 4, 4, ["elephant", "gorilla", "giraffe", "raccoon", None, "penguin", "fox", None, None, "red-panda", "owl",
+                                "shark", None, None, None, "lion"]),
+]
+
+
+def avatars(size=256, radius=94):
+    out = os.path.join(OUT, "avatars")
+    os.makedirs(out, exist_ok=True)
+    names = []
+    for src, rows, cols, labels in AVATARS:
+        rgb = load(src)
+        circles, owner = grid_tiles(rgb, rows, cols)
+        for n, label in enumerate(labels):
+            if label is None:
+                continue
+            rgba, pink, (x0, y0) = cut(rgb, owner, n, circles[n])
+            circle = (circles[n][0] - x0, circles[n][1] - y0, circles[n][2])
+            # Bits of the neighbouring pictures that reach into this cell: keep only pieces that touch the circle
+            # or lie close to it (a feather, a crown), not ones at the cell's edge.
+            solid = rgba[..., 3] > 20
+            pieces, count = ndimage.label(solid, structure=np.ones((3, 3)))
+            yy, xx = np.mgrid[0:solid.shape[0], 0:solid.shape[1]]
+            dist = np.hypot(xx - circle[0], yy - circle[1]) / circle[2]
+            for k in range(1, count + 1):
+                m = pieces == k
+                if (dist[m] <= 1.0).any():
+                    continue
+                cy, cx = np.argwhere(m).mean(axis=0)
+                if math.hypot(cx - circle[0], cy - circle[1]) / circle[2] > 1.12:
+                    rgba[m, 3] = 0
+            placed, _, _ = place(rgba, pink, circle, size, radius, (size / 2, size / 2 + 6))
+            im = Image.fromarray(np.clip(placed, 0, 255).astype(np.uint8), "RGBA")
+            rgb_s = im.convert("RGB").filter(ImageFilter.UnsharpMask(radius=1.0, percent=50, threshold=2))
+            Image.merge("RGBA", (*rgb_s.split(), im.split()[3])).save(os.path.join(out, label + ".png"), optimize=True)
+            names.append(label)
+    print(f"{len(names)} avatars")
+    return names
+
+
 if __name__ == "__main__":
     only = sys.argv[1] if len(sys.argv) > 1 else None
     report = {}
@@ -298,4 +377,12 @@ if __name__ == "__main__":
         for label, rgba, pink, lum, circle in sheet(src, [4, 3, 3], size, 205, (size / 2, size / 2 - 4), prefix):
             save(label, rgba, pink, lum)
             report[label] = [round(v, 1) for v in circle]
+    if not only or only == "avatars":
+        avatars()
+        # Into the apps: the desktop app's resources and the Android app's assets.
+        for dest in ("app/src/main/resources/ui/avatars", "android/app/src/main/assets/avatars"):
+            d = os.path.join(ROOT, dest)
+            shutil.rmtree(d, ignore_errors=True)
+            shutil.copytree(os.path.join(OUT, "avatars"), d)
+            print("copied to", dest)
     print(json.dumps(report))

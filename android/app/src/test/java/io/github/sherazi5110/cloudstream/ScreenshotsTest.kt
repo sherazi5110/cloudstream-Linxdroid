@@ -11,6 +11,9 @@ import io.github.sherazi5110.cloudstream.ui.ThemeState
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 import com.lagradost.cloudstream3.newMovieSearchResponse
 
 /**
@@ -91,5 +94,29 @@ class TvHomeBannerTest {
                 com.lagradost.cloudstream3.HomePageList("Trending", items))
         }
         paparazzi.snapshot("tv-home-banner") { CloudStreamTheme { io.github.sherazi5110.cloudstream.ui.WideHome(state) } }
+    }
+}
+
+/** Stream Goat's profile pictures, as the profile editor shows them. */
+class AvatarPicturesTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, maxPercentDifference = 0.1)
+
+    @Test
+    fun pictures() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+        paparazzi.snapshot("avatar-pictures") {
+            CloudStreamTheme {
+                androidx.compose.foundation.layout.FlowRow(
+                    androidx.compose.ui.Modifier.background(io.github.sherazi5110.cloudstream.ui.Palette.background).padding(12.dp),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                ) {
+                    io.github.sherazi5110.cloudstream.ui.Avatars.pictures.forEach { io.github.sherazi5110.cloudstream.ui.Avatar("art:$it", 64.dp) }
+                    io.github.sherazi5110.cloudstream.ui.Avatar("cat:green", 64.dp)
+                }
+            }
+        }
     }
 }

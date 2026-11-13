@@ -22,10 +22,24 @@ import javafx.scene.transform.Scale
 import java.io.File
 
 /**
- * Profile pictures: twelve simple characters drawn from shapes (so they stay sharp at any
- * size) on a colour of your choice, or a picture file. Stored as "character:color" or "file:<path>".
+ * Profile pictures: Stream Goat's own pictures (goats and animals, "art:<name>", from art/ via scripts/art.py),
+ * twelve simple characters drawn from shapes on a colour of your choice ("character:color"), or a picture file
+ * ("file:<path>").
  */
 object Avatars {
+    /** The pictures, in the order the profile editor shows them. */
+    val pictures = listOf(
+        "goat-white", "goat-blue", "goat-gold", "goat-green", "goat-pink", "goat-grey", "goat-midnight", "goat-orange", "goat-coral",
+        "goat-king", "goat-dj", "goat-cap", "goat-cowboy", "goat-professor", "goat-party",
+        "cow", "sheep", "pig", "dog", "kitten", "cat", "duck", "chicken", "ram", "rabbit", "horse", "donkey", "llama", "rooster", "bear",
+        "elephant", "gorilla", "giraffe", "raccoon", "penguin", "fox", "red-panda", "owl", "shark", "lion",
+    )
+
+    private val pictureCache = java.util.concurrent.ConcurrentHashMap<String, Image>()
+
+    private fun picture(name: String): Image? = pictureCache[name] ?: Avatars::class.java.getResource("/ui/avatars/$name.png")
+        ?.let { Image(it.toExternalForm(), 256.0, 256.0, true, true, false) }?.also { pictureCache[name] = it }
+
     val characters = listOf("smile", "cat", "bear", "panda", "robot", "alien", "ghost", "fox", "frog", "owl", "monster", "astro")
     val colors = linkedMapOf(
         "blue" to "#3b82f6", "red" to "#ef4444", "green" to "#10b981", "purple" to "#8b5cf6",
@@ -36,6 +50,13 @@ object Avatars {
         val pane = Pane().apply {
             setMinSize(size, size); setPrefSize(size, size); setMaxSize(size, size)
             isPickOnBounds = false
+        }
+        // Stream Goat's pictures are round with horns, ears and food sticking out: shown whole, not clipped.
+        if (avatar.startsWith("art:")) {
+            picture(avatar.removePrefix("art:"))?.let { img ->
+                pane.children += ImageView(img).apply { fitWidth = size; fitHeight = size; isSmooth = true; isPreserveRatio = true }
+                return pane
+            }
         }
         val radius = if (round) size else size * 0.22
         pane.clip = Rectangle(size, size).apply { arcWidth = radius; arcHeight = radius }
