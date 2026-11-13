@@ -484,7 +484,7 @@ private fun EpisodeRow(api: MainAPI, r: LoadResponse, ep: Playable, libraryVersi
 
 /** Scrolls only as far as needed to show the focused item (no TV "pivot"): the page's top stays visible. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-private val MinimalScroll = object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+internal val MinimalScroll = object : androidx.compose.foundation.gestures.BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
         val trailing = offset + size
         return when {

@@ -1,5 +1,7 @@
 package io.github.sherazi5110.cloudstream.ui
 
+import kotlinx.coroutines.launch
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -284,13 +286,23 @@ fun CatalogRow(
  * The banner slides by itself and can be swiped; on TV it follows the focused card.
  */
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 internal fun WideHome(state: HomeState) {
     var focused by remember { mutableStateOf<SearchResponse?>(null) }
     val list = rememberLazyListState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val bannerHeight = (maxHeight * 0.74f).coerceIn(340.dp, 640.dp)
+        val scope = rememberCoroutineScope()
+        // On a TV, Compose scrolls a list so the focused item sits a third of the way down (the TV "pivot"). With the
+        // remote on the banner's Play button that pushed the banner's top (logo, title) up under the top bar. Here
+        // the list only scrolls as far as needed, and the banner always shows whole when it has the focus.
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides MinimalScroll) {
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 32.dp)) {
-            item(key = "banner") { WideBanner(state, focused, bannerHeight) }
+            item(key = "banner") {
+                Box(Modifier.onFocusChanged { f ->
+                    if (f.hasFocus && (list.firstVisibleItemIndex != 0 || list.firstVisibleItemScrollOffset != 0)) scope.launch { list.animateScrollToItem(0) }
+                }) { WideBanner(state, focused, bannerHeight) }
+            }
             if (state.continueWatching.isNotEmpty()) item(key = "continue") {
                 ContinueRow(state.continueWatching, 280.dp)
             }
@@ -299,6 +311,7 @@ internal fun WideHome(state: HomeState) {
             }
             if (state.loading && state.sections.isEmpty()) item { Spinner(Modifier.fillMaxWidth().height(200.dp)) }
             if (state.offline && state.sections.isEmpty()) item { OfflineState(Modifier.fillMaxWidth()) { state.catalogVersion++ } }
+        }
         }
         // Fixed top bar; it gets a backdrop once the banner has scrolled away.
         val scrolled = list.firstVisibleItemIndex > 0
