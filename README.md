@@ -295,7 +295,7 @@ Data lives in `~/.local/share/cloudstream-linux` (override with `CLOUDSTREAM_HOM
 - **`requiresResources`:** Android resource tables aren't decoded; such extensions get an empty `Resources`.
 - **WebView-based extensions** (e.g. Cloudflare challenges) don't work yet. Upstream's own JVM `WebViewResolver` is still unimplemented; the Sources panel says so when this is the cause.
 - Logs are in `~/.local/share/cloudstream-linux/logs/` (Settings → Storage → Logs); please attach `cloudstream.log` and `cloudstream-linux doctor` output to bug reports.
-- **YouTube** links (mostly trailers) depend on VLC's own YouTube support, which breaks often. Upstream uses NewPipe, which is only published on JitPack.
+- **YouTube** trailers depend on VLC's own YouTube support, which breaks often. Extensions that use NewPipe Extractor (like the official repository's YoutubeProvider) get it, as in the official app.
 - **Torrents** need `webtorrent-cli`.
 - Any other Android class an extension touches gets a placeholder. The extension loads, but calling that code throws. Run with `CS_LOG_LEVEL=3` for debug logs.
 

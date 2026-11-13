@@ -123,6 +123,8 @@ dependencies {
 
     // The player: libVLC for Android (Maven Central), with this app's own controls.
     implementation("org.videolan.android:libvlc-all:3.6.5")
+    // NewPipe Extractor, which the official app ships: extensions such as YoutubeProvider (official repository) use it.
+    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.3")
     // QR codes for "Add from phone" (scan with the phone's camera).
     implementation("com.google.zxing:core:3.5.3")
 
