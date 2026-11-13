@@ -147,6 +147,31 @@ class LiveTvMetadataTest {
         assertEquals(listOf(false, true, false, false, true), list.map { it.regionLocked })
         assertEquals(listOf(null, null, "Twitch", "YouTube", "YouTube"), list.map { LiveTv.webPage(it) })
         assertEquals(5, list[1].number)
+
+        // They play in the service's own embed player: which one, for each kind of address.
+        fun embed(url: String) = LiveTv.webEmbed(LiveTv.Channel("k", "s", "n", null, null, url))
+        assertEquals(LiveTv.WebEmbed("Twitch", "twitch", "abcnewsal"), embed("https://www.twitch.tv/abcnewsal"))
+        assertEquals(LiveTv.WebEmbed("YouTube", "youtube-video", "ABVQXgr2LW4"), embed("https://www.youtube.com/watch?v=ABVQXgr2LW4"))
+        assertEquals(LiveTv.WebEmbed("YouTube", "youtube-video", "ABVQXgr2LW4"), embed("https://youtu.be/ABVQXgr2LW4"))
+        assertEquals(LiveTv.WebEmbed("YouTube", "youtube-channel", "UC6YundoLrEuBJaPp_oEPWaA"), embed("https://www.youtube.com/channel/UC6YundoLrEuBJaPp_oEPWaA/live"))
+        assertEquals("youtube-page", embed("https://www.youtube.com/@EuronewsAlbania/live")?.kind)
+        assertEquals("youtube-page", embed("https://www.youtube.com/c/todonoticias/live")?.kind)
+        assertEquals(LiveTv.WebEmbed("Dailymotion", "dailymotion", "x3b68jn"), embed("https://www.dailymotion.com/video/x3b68jn"))
+        assertNull(embed("https://cdn.example/live.m3u8"))
+        // A channel page's live video, from its canonical link; else its channel id.
+        assertEquals("youtube-video", LiveTv.youtubeLiveVideo("\"https://m.youtube.com/@x/live https://www.youtube.com/watch?v=ABVQXgr2LW4\"")?.kind)
+        assertEquals("youtube-channel", LiveTv.youtubeLiveVideo("https://www.youtube.com/channel/UC6YundoLrEuBJaPp_oEPWaA")?.kind)
+        assertNull(LiveTv.youtubeLiveVideo("https://www.youtube.com/@x/live"))
+        // The page: Twitch's parent is the page's host; YouTube gets the page's origin and reports errors.
+        val twitch = LiveTv.embedHtml(LiveTv.WebEmbed("Twitch", "twitch", "abcnewsal"), "https://sherazi5110.github.io")!!
+        assertTrue("player.twitch.tv/?channel=abcnewsal&parent=sherazi5110.github.io" in twitch, twitch)
+        val yt = LiveTv.embedHtml(LiveTv.WebEmbed("YouTube", "youtube-channel", "UC6YundoLrEuBJaPp_oEPWaA"), "http://localhost:4242")!!
+        assertTrue("embed/live_stream?channel=UC6YundoLrEuBJaPp_oEPWaA" in yt && "origin=http%3A%2F%2Flocalhost%3A4242" in yt && "StreamGoat.error" in yt, yt)
+        // Desktop serves the page itself, at a localhost address.
+        val url = StreamProxy.page { origin -> LiveTv.embedHtml(LiveTv.WebEmbed("Twitch", "twitch", "abcnewsal"), origin) }!!
+        assertTrue(url.startsWith("http://localhost:"), url)
+        val served = java.net.URI(url.replace("localhost", "127.0.0.1")).toURL().readText()
+        assertTrue("parent=localhost" in served, served)
         Unit
     }
 

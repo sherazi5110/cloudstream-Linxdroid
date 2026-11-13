@@ -250,6 +250,67 @@ object LiveTv {
         }
     }
 
+    /**
+     * How a web channel plays inside the app: in the service's own embed player (the way they let other apps and
+     * sites show their streams). [kind]: "twitch" (id = channel name), "youtube-video" (video id), "youtube-channel"
+     * (a UC… channel id: its current live stream), "youtube-page" (id = the channel's page, whose live video has to be
+     * found first) or "dailymotion" (video id).
+     */
+    data class WebEmbed(val service: String, val kind: String, val id: String)
+
+    fun webEmbed(c: Channel): WebEmbed? {
+        val service = webPage(c) ?: return null
+        val uri = runCatching { java.net.URI(c.url) }.getOrNull() ?: return null
+        val path = uri.path.orEmpty().trim('/').split('/').filter { it.isNotEmpty() }
+        val query = uri.rawQuery.orEmpty().split('&').associate { it.substringBefore('=') to it.substringAfter('=', "") }
+        val videoId = Regex("^[A-Za-z0-9_-]{11}$")
+        return when (service) {
+            "Twitch" -> path.firstOrNull()?.takeIf { it.matches(Regex("[A-Za-z0-9_]{2,40}")) }?.let { WebEmbed(service, "twitch", it.lowercase()) }
+            "Dailymotion" -> (if (uri.host.orEmpty().endsWith("dai.ly")) path.firstOrNull() else path.getOrNull(path.indexOf("video") + 1)?.takeIf { "video" in path })
+                ?.substringBefore('_')?.let { WebEmbed(service, "dailymotion", it) }
+            "YouTube" -> when {
+                query["v"]?.matches(videoId) == true -> WebEmbed(service, "youtube-video", query.getValue("v"))
+                uri.host.orEmpty().endsWith("youtu.be") && path.firstOrNull()?.matches(videoId) == true -> WebEmbed(service, "youtube-video", path[0])
+                path.size >= 2 && path[0] in setOf("embed", "live", "shorts") && path[1].matches(videoId) -> WebEmbed(service, "youtube-video", path[1])
+                path.size >= 2 && path[0] == "channel" && path[1].startsWith("UC") -> WebEmbed(service, "youtube-channel", path[1])
+                else -> WebEmbed(service, "youtube-page", c.url)
+            }
+            else -> null
+        }
+    }
+
+    /** The live video on a YouTube page, from its address, canonical link or og:url (text holding any of them). */
+    fun youtubeLiveVideo(text: String): WebEmbed? {
+        Regex("(?:watch\\?v=|/live/|/embed/)([A-Za-z0-9_-]{11})").find(text)?.let { return WebEmbed("YouTube", "youtube-video", it.groupValues[1]) }
+        Regex("/channel/(UC[A-Za-z0-9_-]{20,})").find(text)?.let { return WebEmbed("YouTube", "youtube-channel", it.groupValues[1]) }
+        return null
+    }
+
+    /**
+     * A full-window page holding the service's embed player, for a page served from [origin] (its address must be
+     * a real web address: Twitch checks the page's host against `parent`, YouTube wants a referrer). YouTube errors
+     * (embedding turned off, not live) are passed to `StreamGoat.error(code)` when the page provides it.
+     */
+    fun embedHtml(e: WebEmbed, origin: String): String? {
+        val host = runCatching { java.net.URI(origin).host }.getOrNull() ?: return null
+        fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
+        val src = when (e.kind) {
+            "twitch" -> "https://player.twitch.tv/?channel=${enc(e.id)}&parent=${enc(host)}&autoplay=true&muted=false"
+            "youtube-video" -> "https://www.youtube.com/embed/${enc(e.id)}?autoplay=1&playsinline=1&rel=0&enablejsapi=1&origin=${enc(origin)}"
+            "youtube-channel" -> "https://www.youtube.com/embed/live_stream?channel=${enc(e.id)}&autoplay=1&playsinline=1&enablejsapi=1&origin=${enc(origin)}"
+            "dailymotion" -> "https://www.dailymotion.com/embed/video/${enc(e.id)}?autoplay=1"
+            else -> return null
+        }
+        val youtube = e.kind.startsWith("youtube")
+        return """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin"><title>Stream Goat</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}iframe{position:fixed;inset:0;width:100%;height:100%;border:0}</style></head>
+<body><iframe id="p" src="$src" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+""" + (if (youtube) """<script>function onYouTubeIframeAPIReady(){new YT.Player('p',{events:{onReady:function(ev){ev.target.playVideo()},onError:function(ev){if(window.StreamGoat)StreamGoat.error(String(ev.data))}}})}</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+""" else "") + "</body></html>"
+    }
+
     /** #EXTM3U playlists: attributes, #EXTVLCOPT headers and the "url|Header=value" form. */
     fun parseM3u(sourceId: String, text: String): List<Channel> {
         val out = mutableListOf<Channel>()

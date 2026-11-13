@@ -214,7 +214,7 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
             if (next != null) children += label("Next: ${next.title} · ${time(next.start)}", "muted")
         }
         val buttons = hbox(12.0,
-            button(LiveTv.webPage(c)?.let { "Watch on $it" } ?: "Watch live", Icons.PLAY, "hero-play") { play(c) },
+            button("Watch live", Icons.PLAY, "hero-play") { play(c) },
             button(if (fav) "Favourite" else "Add to favourites", if (fav) Icons.STAR else Icons.STAR_OUTLINE, "hero-info") { LiveTv.toggleFavourite(c) }.apply {
                 if (fav) styleClass += "is-favourite"
             },
@@ -327,8 +327,8 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
             style = "-fx-background-color: linear-gradient(to bottom right, ${colorFor(c.name)}cc, #120a22);"
         }
         val web = LiveTv.webPage(c)
-        val live = label(web?.let { "▶ ${it.uppercase()}" } ?: "● LIVE", "live-badge").also { StackPane.setAlignment(it, Pos.TOP_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0)) }
-        if (web != null) live.tooltip("Opens in $web: it's a $web channel, not a stream the player can open")
+        val live = label(web?.let { "● LIVE · ${it.uppercase()}" } ?: "● LIVE", "live-badge").also { StackPane.setAlignment(it, Pos.TOP_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0)) }
+        if (web != null) live.tooltip("A $web channel: plays in $web's own player")
         pic.children += live
         if (c.regionLocked) pic.children += label("Region-locked", "badge").also {
             StackPane.setAlignment(it, Pos.BOTTOM_LEFT); StackPane.setMargin(it, javafx.geometry.Insets(8.0))
@@ -391,7 +391,16 @@ class LiveTvPage : StackPane(), Refreshable, TopBarActions, Disposable {
 
     private fun play(c: LiveTv.Channel) {
         LiveTv.watched(c)
-        // A YouTube or Twitch channel page: the player can't open it, its site can.
+        // A YouTube, Twitch or Dailymotion channel: that service's own player, in a window of its own (the app's
+        // web view can't play their streams). A YouTube channel given by name opens its live page.
+        LiveTv.webEmbed(c)?.let { e ->
+            val url = if (e.kind == "youtube-page") c.url else com.lagradost.cloudstream3.linux.StreamProxy.page { origin -> LiveTv.embedHtml(e, origin) }
+            if (url != null && Os.openAppWindow(url)) {
+                Toasts.show("Playing ${c.name} in ${e.service}'s player (its own window)")
+                return
+            }
+        }
+        // Anything else that's a web page: its site can open it.
         LiveTv.webPage(c)?.let { service ->
             if (Os.open(c.url)) Toasts.show("Opening ${c.name} on $service in your browser")
             else Toasts.show("Couldn't open ${c.name}: ${c.url}")

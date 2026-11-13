@@ -74,7 +74,13 @@ object LivePlayback {
     /** Opens a channel in the player; [list] lets CH+ / CH− move through the channels shown. */
     fun play(scope: CoroutineScope, c: LiveTv.Channel, list: List<LiveTv.Channel>, replace: Boolean = false) {
         LiveTv.watched(c)
-        // A YouTube or Twitch channel page: the player can't open it, that service's app (or the browser) can.
+        // A YouTube, Twitch or Dailymotion channel: plays in that service's own embed player, inside the app.
+        if (LiveTv.webEmbed(c) != null) {
+            val screen = Screen.WebPlayer(c, list)
+            if (replace) Nav.replace(screen) else Nav.open(screen)
+            return
+        }
+        // Anything else that's a web page: that service's app (or the browser) can open it.
         LiveTv.webPage(c)?.let { service ->
             val opened = runCatching {
                 App.context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(c.url))
@@ -273,7 +279,7 @@ private fun LiveBanner(c: LiveTv.Channel, number: Int, now: Long, guideVersion: 
     Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 20.dp, bottom = 8.dp)
         .background(Brush.horizontalGradient(listOf(Palette.accent.copy(alpha = 0.10f), Color.Transparent)), RoundedCornerShape(16.dp)).padding(if (wide) 8.dp else 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            LiveBadge(label = LiveTv.webPage(c)?.uppercase() ?: "LIVE")
+            LiveBadge(label = LiveTv.webPage(c)?.let { "LIVE · ${it.uppercase()}" } ?: "LIVE")
             Text(listOfNotNull("Channel $number", c.group, "Region-locked".takeIf { c.regionLocked }).joinToString(" · "), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 10.dp))
         }
         Row(Modifier.padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -288,7 +294,7 @@ private fun LiveBanner(c: LiveTv.Channel, number: Int, now: Long, guideVersion: 
             next?.let { Text("Next: ${it.title} · ${time.format(Date(it.start))}", style = MaterialTheme.typography.bodyMedium) }
         } else Text("No guide for this channel", style = MaterialTheme.typography.bodyMedium)
         Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PillButton(LiveTv.webPage(c)?.let { "Watch on $it" } ?: "Watch live", Icons.Filled.PlayArrow, compact = !wide) { onWatch() }
+            PillButton("Watch live", Icons.Filled.PlayArrow, compact = !wide) { onWatch() }
             PillButton(if (favourite) "Favourite" else "Add to favourites", if (favourite) Icons.Filled.Star else Icons.Filled.StarBorder, primary = false, compact = !wide) { onFavourite() }
         }
     }
@@ -302,7 +308,7 @@ private fun ChannelCard(c: LiveTv.Channel, now: Long, guideVersion: Int, onFocus
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 8f).background(Brush.linearGradient(listOf(Palette.surfaceHigh, Palette.accent.copy(alpha = 0.18f)))),
             contentAlignment = Alignment.Center) {
             ChannelLogo(c, 58.dp)
-            LiveBadge(Modifier.align(Alignment.TopStart).padding(8.dp), LiveTv.webPage(c)?.uppercase() ?: "LIVE")
+            LiveBadge(Modifier.align(Alignment.TopStart).padding(8.dp), LiveTv.webPage(c)?.let { "LIVE · ${it.uppercase()}" } ?: "LIVE")
             if (c.regionLocked) RegionBadge(Modifier.align(Alignment.BottomStart).padding(8.dp))
         }
         Column(Modifier.padding(10.dp)) {

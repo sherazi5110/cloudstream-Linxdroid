@@ -21,6 +21,11 @@ sealed interface Screen {
         val channels: List<io.github.sherazi5110.cloudstream.LiveTv.Channel>? = null,
         val channel: io.github.sherazi5110.cloudstream.LiveTv.Channel? = null,
     ) : Screen
+    /** A Live TV channel that's a YouTube, Twitch or Dailymotion channel: plays in that service's embed player. */
+    data class WebPlayer(
+        val channel: io.github.sherazi5110.cloudstream.LiveTv.Channel,
+        val channels: List<io.github.sherazi5110.cloudstream.LiveTv.Channel> = emptyList(),
+    ) : Screen
     /** "See all": one catalog of one extension, endlessly scrolling. */
     data class Catalog(val apiName: String, val sectionName: String, val title: String) : Screen
     /** A Settings section opened on its own (portrait). */

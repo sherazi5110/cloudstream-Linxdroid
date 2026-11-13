@@ -68,6 +68,35 @@ object Os {
         true
     }.getOrDefault(false)
 
+    /**
+     * Opens a web page in a window of its own, without tabs or an address bar (Edge or Chrome's app mode;
+     * Edge comes with Windows). Falls back to the default browser. Used for the official players of YouTube,
+     * Twitch and Dailymotion channels in Live TV, which the app's own web view can't play.
+     */
+    fun openAppWindow(url: String): Boolean {
+        val env = System.getenv()
+        val candidates = if (isWindows) listOfNotNull(
+            env["ProgramFiles(x86)"]?.let { "$it\\Microsoft\\Edge\\Application\\msedge.exe" },
+            env["ProgramFiles"]?.let { "$it\\Microsoft\\Edge\\Application\\msedge.exe" },
+            env["ProgramFiles"]?.let { "$it\\Google\\Chrome\\Application\\chrome.exe" },
+            env["ProgramFiles(x86)"]?.let { "$it\\Google\\Chrome\\Application\\chrome.exe" },
+            env["LOCALAPPDATA"]?.let { "$it\\Google\\Chrome\\Application\\chrome.exe" },
+        ).filter { File(it).isFile }
+        else if (isMac) listOf("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge").filter { File(it).isFile }
+        else (env["PATH"] ?: "").split(File.pathSeparator).flatMap { dir ->
+            listOf("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "microsoft-edge", "microsoft-edge-stable", "brave-browser")
+                .map { File(dir, it) }
+        }.filter { it.canExecute() }.map { it.path }.distinct()
+        for (exe in candidates) {
+            val started = runCatching {
+                ProcessBuilder(exe, "--app=$url", "--window-size=1280,720", "--autoplay-policy=no-user-gesture-required")
+                    .redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
+            }.isSuccess
+            if (started) return true
+        }
+        return open(url)
+    }
+
     /** What to do when VLC's libraries are missing. */
     val vlcHint: String get() = when {
         isWindows -> "VLC is included with Stream Goat; reinstall Stream Goat, or install VLC (64-bit) from videolan.org"

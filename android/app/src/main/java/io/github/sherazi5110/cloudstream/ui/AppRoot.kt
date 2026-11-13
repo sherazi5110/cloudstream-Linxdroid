@@ -71,6 +71,10 @@ fun AppRoot() {
                 PlayerScreen(top)
                 return@CompositionLocalProvider
             }
+            if (top is Screen.WebPlayer) {
+                WebPlayerScreen(top)
+                return@CompositionLocalProvider
+            }
             if (wide) Row(Modifier.fillMaxSize()) {
                 Rail()
                 Box(Modifier.weight(1f).fillMaxHeight()) { Content(top) }
@@ -104,7 +108,7 @@ private fun Content(top: Screen?) {
         is Screen.Repository -> RepositoryScreen(top)
         is Screen.ProviderTests -> ProviderTestsScreen()
         is Screen.SettingsPage -> SettingsPageScreen(top)
-        is Screen.Player -> Unit
+        is Screen.Player, is Screen.WebPlayer -> Unit
     }
 }
 
