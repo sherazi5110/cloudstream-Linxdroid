@@ -564,10 +564,8 @@ class BuiltinPlayer(
         val items = Zoom.entries.map { z ->
             PlayerMenu.Item(z.label, active = video.zoom == z) { setZoom(z); menu.close() }
         } + listOf(
-            PlayerMenu.Item("Anime enhance", hint = if (enhancing) "on: crisper lines when upscaling" else "off", active = enhancing, keepOpen = true) {
-                enhanceOverride = !enhancing
-                flash(if (!enhancing) "Anime enhance on" else "Anime enhance off")
-                open(current, startAt = position.takeIf { it > 1000 })
+            PlayerMenu.Item("Anime enhance (E)", hint = enhanceStatus(), active = enhancing, keepOpen = true) {
+                toggleEnhance()
                 showZoom()
             },
             PlayerMenu.Item("HDR colour fix", hint = if (video.hdrFix) "on" else if (Picture.looksHdr(current)) "off (source is HDR)" else "off", active = video.hdrFix, keepOpen = true) {
@@ -578,6 +576,21 @@ class BuiltinPlayer(
             },
         )
         menu.open("zoom", "Picture", items)
+    }
+
+    /** Whether anime enhance is on, and whether it's sharpening this video (only video smaller than the screen gains). */
+    private fun enhanceStatus(): String = when {
+        !enhancing -> "off"
+        video.sourceH <= 0 -> "on"
+        else -> video.enhanceTarget()?.let { "on: ${video.sourceH}p sharpened to ${it}p for your screen" }
+            ?: "on, but this ${video.sourceH}p video already fills your screen (nothing to sharpen)"
+    }
+
+    /** Anime enhance on/off for this playback (E, or the Picture menu); the video reopens where it was. */
+    private fun toggleEnhance() {
+        enhanceOverride = !enhancing
+        open(current, startAt = position.takeIf { it > 1000 })
+        flash("Anime enhance " + enhanceStatus())
     }
 
     private fun setZoom(z: Zoom) {
@@ -884,7 +897,9 @@ class BuiltinPlayer(
             KeyCode.S -> if (e.isShiftDown) screenshot() else showSources()
             KeyCode.C -> showSubtitles()
             KeyCode.A -> showAudio()
-            KeyCode.Z -> cycleZoom()
+            // Z: the Picture menu (zoom, anime enhance, HDR); Shift+Z cycles the zoom; E: anime enhance on/off.
+            KeyCode.Z -> if (e.isShiftDown) cycleZoom() else showZoom()
+            KeyCode.E -> toggleEnhance()
             KeyCode.N -> playNext()
             KeyCode.G -> subDelay(-100)
             KeyCode.H -> subDelay(100)

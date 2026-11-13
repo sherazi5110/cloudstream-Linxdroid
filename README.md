@@ -87,7 +87,7 @@ The `.deb` and Flatpak bring everything they need (VLC is installed with the `.d
   (SRT, WebVTT), not subtitles burned into the picture. Windows, Linux and Android.
 - **Anime enhance** (Windows, Linux): low-resolution animation is upscaled to your screen inside VLC with Lanczos
   instead of a soft stretch, so line art stays crisp (measured on a 240p cartoon at 720p: 26.8 → 27.4 dB PSNR against
-  the original). Auto for anime and cartoons; also in the player's **Picture** menu (Z).
+  the original). Auto for anime and cartoons. In the player, the **Picture** menu (Z) says whether it's sharpening the video you're watching ("480p sharpened to 1080p"); **E** turns it on or off.
 - **HDR:** on Android, HDR10, HLG and Dolby Vision play in real HDR on HDR screens. On Windows and Linux the player
   can't output HDR, so HDR sources get a colour correction instead of looking grey and washed out.
 
