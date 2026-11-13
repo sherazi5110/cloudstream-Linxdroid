@@ -11,6 +11,7 @@ import okhttp3.Dispatcher
 import okhttp3.Dns
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
@@ -39,7 +40,20 @@ object Network {
         private set
     val cookies by lazy { PersistentCookieJar(File(AppDirs.data, "network/cookies.json")) }
 
+    /** Extensions' android.webkit.CookieManager reads and writes the same cookie store as the app's requests. */
+    private val webCookies = object : android.webkit.CookieManager.Backend {
+        override fun getCookie(url: String): String? = url.toHttpUrlOrNull()?.let { u ->
+            cookies.loadForRequest(u).joinToString("; ") { "${it.name}=${it.value}" }
+        }
+        override fun setCookie(url: String, value: String) {
+            val u = url.toHttpUrlOrNull() ?: return
+            okhttp3.Cookie.parse(u, value)?.let { cookies.saveFromResponse(u, listOf(it)) }
+        }
+        override fun removeAll() = cookies.clear()
+    }
+
     fun init() {
+        android.webkit.CookieManager.backend = webCookies
         val cache = Cache(File(Platform.context.getCacheDir(), "http_cache"), 100L * 1024 * 1024)
         val dispatcher = Dispatcher().apply {
             maxRequests = 128
