@@ -123,6 +123,8 @@ dependencies {
 
     // The player: libVLC for Android (Maven Central), with this app's own controls.
     implementation("org.videolan.android:libvlc-all:3.6.5")
+    // QR codes for "Add from phone" (scan with the phone's camera).
+    implementation("com.google.zxing:core:3.5.3")
 
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
