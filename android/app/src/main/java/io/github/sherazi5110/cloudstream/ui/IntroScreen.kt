@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +73,9 @@ fun IntroScreen(onDone: () -> Unit) {
     val words = remember { Animatable(0f) }
     val twinkles = remember { List(60) { Triple(Random.nextFloat(), Random.nextFloat() * 0.55f, 0.6f + Random.nextFloat() * 1.4f) } }
     val shapes = remember { Triple(path(MOUNTAIN), path(SNOW) to path(PEAK_SNOW), GOAT_PARTS.map(::path) to path(EYES)) }
+    val done by androidx.compose.runtime.rememberUpdatedState(onDone)
+    // Ends the intro even if no animation frames come (screen off, a slow device): it must never hold the app up.
+    LaunchedEffect(Unit) { delay(5000); done() }
     LaunchedEffect(Unit) {
         coroutineScope {
             listOf(
@@ -81,11 +86,12 @@ fun IntroScreen(onDone: () -> Unit) {
             ).awaitAll()
         }
         delay(500)
-        onDone()
+        done()
     }
     Box(
         Modifier.fillMaxSize().background(Color(0xFF05060C))
-            .clickable(remember { MutableInteractionSource() }, null) { onDone() },
+            .clickable(remember { MutableInteractionSource() }, null) { done() }
+            .onKeyEvent { done(); true },
     ) {
         Canvas(Modifier.fillMaxSize()) {
             // A 1000x620 board, scaled to cover the screen.
