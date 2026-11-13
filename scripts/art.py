@@ -243,20 +243,52 @@ def luminance(rgba):
     return np.dstack([y, y, y, rgba[..., 3]])
 
 
-def save(name, rgba, pink, lum, sharpen=True):
+def save(name, rgba, pink, lum, sharpen=True, circle=None):
     os.makedirs(OUT, exist_ok=True)
     im = Image.fromarray(np.clip(rgba, 0, 255).astype(np.uint8), "RGBA")
     if sharpen:
         rgb = im.convert("RGB").filter(ImageFilter.UnsharpMask(radius=1.2, percent=60, threshold=2))
         im = Image.merge("RGBA", (*rgb.split(), im.split()[3]))
     im.save(os.path.join(OUT, name + ".png"), optimize=True)
-    # Tint layer: the pink parts' brightness, scaled so the lightest pink is white (the colour shows at full
-    # strength there and darker towards the circle's edge, like the original shading).
+    # Tint layers: the pink parts' brightness, scaled so the lightest pink is white (the colour shows at full
+    # strength there and darker towards the circle's edge, like the original shading). The circle (pink pieces
+    # reaching its edge) and the inner ears are separate layers: the ears stay pink with the rainbow.
     sel = pink > 0.5
     ref = np.percentile(lum[sel], 92) if sel.any() else 1.0
     grey = np.clip(lum / max(ref, 1e-3), 0, 1) * 255
-    tint = Image.fromarray(np.dstack([grey, grey, grey, np.clip(pink, 0, 1) * 255]).astype(np.uint8), "RGBA")
-    tint.convert("LA").save(os.path.join(OUT, name + "-tint.png"), optimize=True)
+    # The inner ears are a warmer pink (salmon) than the circle (rose). Warm patches surrounded by the circle's own
+    # pink are just its lighter part; warm patches walled off by outlines and fur are ears.
+    rgb_ = rgba[..., :3]
+    H, _, _ = hsv(rgb_)
+    hue = np.where(H > 180, H - 360, H)
+    warm = sel & (hue > 0.5)
+    frac = ndimage.uniform_filter(warm.astype(np.float32), 9) / np.maximum(ndimage.uniform_filter(sel.astype(np.float32), 9), 1e-3)
+    ear_like = sel & (frac > 0.5)
+    lab, n = ndimage.label(ear_like)
+    ears_part = np.zeros_like(sel)
+    for k in range(1, n + 1):
+        m = lab == k
+        if m.sum() < 60:
+            continue
+        rim = ndimage.binary_dilation(m, iterations=3) & ~m
+        if rim.sum() == 0:
+            continue
+        rose = (rim & sel & ~ear_like).sum() / rim.sum()
+        if rose < 0.35:
+            ears_part |= m
+    ears_part = ndimage.binary_dilation(ears_part, iterations=2) & sel
+    circle_part = sel & ~ears_part
+    if circle is not None:
+        # Only inside the circle: red signs and progress bars next to it keep their colour.
+        cx, cy, r = circle
+        yy, xx = np.mgrid[0:sel.shape[0], 0:sel.shape[1]]
+        circle_part &= np.hypot(xx - cx, yy - cy) <= r + 3
+    grow = circle_part | (~ndimage.binary_dilation(ears_part, iterations=1) & (circle_part if circle is not None else True))
+    p_circle = np.where(grow, pink, 0)
+    p_ears = np.where(grow, 0, pink)
+    for suffix, p in (("-tint", p_circle), ("-ears", p_ears)):
+        Image.fromarray(np.dstack([grey, grey, grey, np.clip(p, 0, 1) * 255]).astype(np.uint8), "RGBA").convert("LA") \
+            .save(os.path.join(OUT, name + suffix + ".png"), optimize=True)
 
 
 def preview(name, rgba, pink, lum, color=(59, 130, 246)):
@@ -367,6 +399,130 @@ def avatars(size=256, radius=94):
     return names
 
 
+def logo(size=768):
+    """The rainbow logo (art/source/logo-rainbow.jpg): the logo itself, the masks the apps use to recolour it with the
+    theme colour, and a rainbow "texture" that colours the animations' circles the same way."""
+    rgb = load("logo-rainbow.jpg")
+    h, w = rgb.shape[:2]
+    page = (rgb.min(axis=2) > 215) & ((rgb.max(axis=2) - rgb.min(axis=2)) < 22)
+    edge = ~page & ndimage.binary_dilation(page, iterations=2)
+    ey, ex = np.nonzero(edge)
+    rng = np.random.default_rng(1)
+    best, best_in = None, -1
+    for _ in range(3000):
+        k = rng.choice(len(ex), 3, replace=False)
+        try:
+            c = fit_circle(ex[k], ey[k])
+        except Exception:
+            continue
+        if not (0.25 * w < c[2] < 0.42 * w):
+            continue
+        inl = np.abs(np.hypot(ex - c[0], ey - c[1]) - c[2]) < 2
+        if inl.sum() > best_in:
+            best, best_in = inl, inl.sum()
+    cx, cy, r = fit_circle(ex[best], ey[best])
+    yy, xx = np.mgrid[0:h, 0:w]
+    d = np.hypot(xx - cx, yy - cy)
+    H, S, V = hsv(rgb)
+    outline = V < 0.42
+    # The rainbow: colourful pieces inside the circle that reach its edge (the goat's parts are outlined).
+    free = (d <= r - 1) & ~outline
+    lab, _ = ndimage.label(free)
+    ring = (d > r - 6) & (d <= r - 1)
+    rainbow = np.zeros((h, w), bool)
+    # The inner ears: salmon-pink pieces anywhere.
+    ears = np.zeros((h, w), bool)
+    lab_all, _ = ndimage.label(~outline & ~page)
+    for k, sl in enumerate(ndimage.find_objects(lab), start=1):
+        m = lab[sl] == k
+        if m.sum() < 20:
+            continue
+        hh = H[sl][m]
+        salmon = ((hh < 25) | (hh > 345)).mean()
+        if S[sl][m].mean() > 0.33 and salmon < 0.5 and (ring[sl] & m).any():
+            rainbow[sl] |= m
+    for k, sl in enumerate(ndimage.find_objects(lab_all), start=1):
+        m = lab_all[sl] == k
+        if m.sum() < 500:
+            continue
+        hh = H[sl][m]
+        if ((hh < 25) | (hh > 345)).mean() > 0.8 and S[sl][m].mean() > 0.3:
+            ears[sl] |= m
+    # Soft edges (the anti-aliasing next to the outlines).
+    rainbow_soft = np.clip(ndimage.gaussian_filter(ndimage.binary_dilation(rainbow, iterations=1).astype(np.float32), 0.8), 0, 1) * (d <= r + 0.5)
+    ears_soft = np.clip(ndimage.gaussian_filter(ndimage.binary_dilation(ears, iterations=1).astype(np.float32), 0.8), 0, 1)
+    # The logo without its page.
+    owner = np.zeros((h, w), int)
+    rgba, _, (x0, y0) = cut(rgb, owner, 0, (cx, cy, r), pad=0)
+    # A rainbow texture for the whole disc: the visible rainbow, spread under the goat and smoothed.
+    # A smooth colour field fitted to the visible rainbow (degree-4 polynomial in x, y), so the hidden part under
+    # the goat continues the rainbow instead of being smeared.
+    ys, xs = np.nonzero(rainbow & (d < r - 4))
+    sel = np.random.default_rng(2).choice(len(xs), min(len(xs), 40000), replace=False)
+    u, v = (xs[sel] - cx) / r, (ys[sel] - cy) / r
+    def terms(u, v):
+        return np.column_stack([u ** i * v ** j for i in range(5) for j in range(5 - i)])
+    A = terms(u, v)
+    U, Vv = (xx - cx) / r, (yy - cy) / r
+    T = terms(U.ravel(), Vv.ravel())
+    texture = np.zeros((h, w, 3), np.float32)
+    for ch in range(3):
+        coef, *_ = np.linalg.lstsq(A, rgb[ys[sel], xs[sel], ch], rcond=None)
+        texture[..., ch] = np.clip((T @ coef).reshape(h, w), 0, 255)
+    disc = (d <= r + 1).astype(np.float32) * 255
+
+    out = os.path.join(OUT, "logo")
+    os.makedirs(out, exist_ok=True)
+    # Everything on one square canvas centred on the circle, the circle 0.42 of the width (horns, ears, beard fit).
+    radius = size * 0.42
+    lum = 0.3 * rgb[..., 0] + 0.59 * rgb[..., 1] + 0.11 * rgb[..., 2]
+    layers = {
+        "logo": np.dstack([rgba[..., :3], rgba[..., 3]]),
+        "logo-circle": np.dstack([np.full((h, w, 3), 255.0), rainbow_soft * 255]),
+        "logo-ears": np.dstack([np.repeat((np.clip(lum / max(np.percentile(lum[ears], 92), 1), 0, 1) * 255)[..., None], 3, 2) if ears.any() else np.zeros((h, w, 3)), ears_soft * 255]),
+        "rainbow": np.dstack([texture, disc]),
+    }
+    k = radius / r
+    for name, arr in layers.items():
+        if name == "logo":
+            arr_full = np.zeros((h, w, 4), np.float32)
+            arr_full[y0:y0 + arr.shape[0], x0:x0 + arr.shape[1]] = arr
+            arr = arr_full
+        pre = arr.copy(); pre[..., :3] *= pre[..., 3:4] / 255.0
+        im = Image.fromarray(np.clip(pre, 0, 255).astype(np.uint8), "RGBA")
+        im = im.resize((round(w * k), round(h * k)), Image.LANCZOS)
+        canvas = Image.new("RGBA", (size, size), 0)
+        canvas.paste(im, (round(size / 2 - cx * k), round(size / 2 - cy * k)))
+        a = np.asarray(canvas).astype(np.float32)
+        a[..., :3] = np.where(a[..., 3:4] > 0, a[..., :3] * 255 / np.maximum(a[..., 3:4], 1), 0)
+        Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA").save(os.path.join(out, name + ".png"), optimize=True)
+    print("logo: circle", round(cx), round(cy), round(r))
+    return os.path.join(out, "rainbow.png")
+
+
+def bake_rainbow(prefix, size, radius, center):
+    """The animation frames with the rainbow in their circle (the default look), from their -tint layers."""
+    tex = Image.open(os.path.join(OUT, "logo", "rainbow.png")).convert("RGBA")
+    # The texture's circle: 0.42 of its width, centred.
+    tr = tex.width * 0.42
+    k = radius / tr
+    tex = tex.resize((round(tex.width * k), round(tex.height * k)), Image.LANCZOS)
+    canvas = Image.new("RGBA", (size, size), 0)
+    canvas.paste(tex, (round(center[0] - tex.width / 2), round(center[1] - tex.height / 2)))
+    t = np.asarray(canvas).astype(np.float32)[..., :3]
+    for f in sorted(os.listdir(OUT)):
+        if not (f.startswith(prefix) and f.endswith(".png")) or "-tint" in f or "-rainbow" in f or "-ears" in f:
+            continue
+        name = f[:-4]
+        base = np.asarray(Image.open(os.path.join(OUT, f)).convert("RGBA")).astype(np.float32)
+        tint = np.asarray(Image.open(os.path.join(OUT, name + "-tint.png")).convert("LA")).astype(np.float32)
+        g = tint[..., 0:1] / 255.0
+        p = tint[..., 1:2] / 255.0
+        out = base.copy()
+        out[..., :3] = base[..., :3] * (1 - p) + np.clip(t * (0.35 + 0.75 * g), 0, 255) * p
+        Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA").save(os.path.join(OUT, name + "-rainbow.png"), optimize=True)
+
+
 if __name__ == "__main__":
     only = sys.argv[1] if len(sys.argv) > 1 else None
     report = {}
@@ -375,8 +531,13 @@ if __name__ == "__main__":
         if only and only not in src:
             continue
         for label, rgba, pink, lum, circle in sheet(src, [4, 3, 3], size, 205, (size / 2, size / 2 - 4), prefix):
-            save(label, rgba, pink, lum)
+            save(label, rgba, pink, lum, circle=(size / 2, size / 2 - 4, 205))
             report[label] = [round(v, 1) for v in circle]
+    if not only or only == "logo":
+        logo()
+    if not only or only in ("logo", "bake"):
+        bake_rainbow("eat", 640, 205, (320, 316))
+        bake_rainbow("offline", 880, 205, (440, 436))
     if not only or only == "avatars":
         avatars()
         # Into the apps: the desktop app's resources and the Android app's assets.

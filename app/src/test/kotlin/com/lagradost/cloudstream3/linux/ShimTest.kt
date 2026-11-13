@@ -48,4 +48,22 @@ class ShimTest {
         val json = com.google.gson.JsonParser.parseString("""{"a":[1,2]}""").asJsonObject
         assertEquals(2, json.getAsJsonArray("a").size())
     }
+
+    @Test
+    fun `LruCache, system services and Uri fromFile (LiveSports from repository 759)`() {
+        val evicted = mutableListOf<String>()
+        val cache = object : android.util.LruCache<String, String>(10) {
+            override fun sizeOf(key: String, value: String) = value.length
+            override fun entryRemoved(evicted0: Boolean, key: String, oldValue: String, newValue: String?) { if (evicted0) evicted += key }
+        }
+        cache.put("a", "12345"); cache.put("b", "1234"); cache.get("a"); cache.put("c", "123")
+        assertEquals(listOf("b"), evicted)
+        assertEquals(setOf("a", "c"), cache.snapshot().keys)
+        Platform.init()
+        val am = Platform.context.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        assertEquals(false, am.isLowRamDevice())
+        assertTrue(am.getMemoryClass() >= 128)
+        assertEquals(null, Platform.context.getSystemService("something-else"))
+        assertTrue(android.net.Uri.fromFile(java.io.File("/tmp/x.jpg")).toString().startsWith("file:///"))
+    }
 }
