@@ -254,6 +254,11 @@ private fun PlayerSection() {
     Heading("Preferred quality")
     var quality by remember { mutableStateOf(Settings.preferredQuality) }
     ChoiceChips(listOf(0, 2160, 1080, 720, 480), { if (it == 0) "Best" else "${it}p" }, { it == quality }) { quality = it; Settings.preferredQuality = it }
+    Heading("Anime enhance")
+    var enhance by remember { mutableStateOf(Settings.animeEnhance) }
+    ChoiceChips(listOf("AUTO", "ON", "OFF"), { mapOf("AUTO" to "Auto", "ON" to "Always", "OFF" to "Off")[it]!! }, { it == enhance }) { enhance = it; Settings.animeEnhance = it }
+    Hint("Crisper line art for low-quality animation: the video is enlarged on the graphics chip with Catmull-Rom and its " +
+        "edges sharpened (without halos). Auto: anime and cartoons up to 1440p. The ✨ button in the player turns it on or off.")
     Heading("HDR")
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val hdrTypes = remember { io.github.sherazi5110.cloudstream.Picture.screenHdrTypes(ctx as? android.app.Activity) }

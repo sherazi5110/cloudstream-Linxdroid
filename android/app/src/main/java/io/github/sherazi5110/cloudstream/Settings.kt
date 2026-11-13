@@ -190,6 +190,11 @@ object Settings {
         get() = string("startup_animation", "true").toBoolean()
         set(v) = put("startup_animation", v)
 
+    /** Anime enhance (GPU upscaling + sharpening): AUTO (anime and cartoons up to 1440p), ON, OFF. */
+    var animeEnhance: String
+        get() = string("anime_enhance", "AUTO")
+        set(v) = put("anime_enhance", v)
+
     /** HDR video on HDR screens: AUTO (HDR sources), ON (always the HDR-capable surface), OFF. */
     var hdrOutput: String
         get() = string("hdr_output", "AUTO")
