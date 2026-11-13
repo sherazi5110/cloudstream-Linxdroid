@@ -146,11 +146,12 @@ fun SearchScreen() {
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         OutlinedTextField(
-            value = query,
+            // The text being typed (the search that ran is Nav.searchSubmitted).
+            value = typed,
             onValueChange = { Nav.searchQuery = it; if (it.isBlank()) Nav.searchSubmitted = "" },
             placeholder = { Text("Search films, series, anime…") },
             leadingIcon = { Icon(Icons.Filled.Search, null) },
-            trailingIcon = { if (query.isNotEmpty()) Icon(Icons.Filled.Close, "Clear", Modifier.card(CircleShape) { Nav.searchQuery = ""; Nav.searchSubmitted = "" }.padding(6.dp)) },
+            trailingIcon = { if (typed.isNotEmpty()) Icon(Icons.Filled.Close, "Clear", Modifier.card(CircleShape) { Nav.searchQuery = ""; Nav.searchSubmitted = "" }.padding(6.dp)) },
             singleLine = true,
             shape = RoundedCornerShape(50),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),

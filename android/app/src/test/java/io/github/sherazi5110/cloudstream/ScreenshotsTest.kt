@@ -38,7 +38,10 @@ class ScreenshotsTest {
 
     @Test fun phonePlayerSettings() { Nav.tab = Tab.MORE; Nav.stack.add(Screen.SettingsPage("PLAYER")); shot("phone-player-settings") }
 
-    @Test fun phoneSearch() { Nav.tab = Tab.SEARCH; shot("phone-search") }
+    @Test fun phoneSearch() { Nav.tab = Tab.SEARCH; Nav.searchQuery = ""; Nav.searchSubmitted = ""; shot("phone-search") }
+
+    /** Typed but not searched yet: the box must show the typed text (7.2.0 showed the last search instead). */
+    @Test fun phoneSearchTyping() { Nav.tab = Tab.SEARCH; Nav.searchQuery = "pixel"; Nav.searchSubmitted = ""; shot("phone-search-typing") }
 }
 
 /** Android TV: the icon rail and the settings beside it. */

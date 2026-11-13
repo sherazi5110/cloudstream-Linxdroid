@@ -40,7 +40,7 @@ import kotlin.system.exitProcess
 
 object AppInfo {
     const val NAME = "Stream Goat"
-    const val VERSION = "7.2.1"
+    const val VERSION = "7.2.2"
     const val CREDIT = "Syed Ali Hamza"
 }
 
