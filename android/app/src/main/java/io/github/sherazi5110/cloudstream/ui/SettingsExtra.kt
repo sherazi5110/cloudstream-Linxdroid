@@ -138,6 +138,13 @@ internal fun GeneralSection() {
     var parallel by remember { mutableIntStateOf(Settings.parallelDownloads) }
     Hint("Downloads at the same time.")
     ChoiceChips((1..5).toList(), { it.toString() }, { it == parallel }) { parallel = it; Settings.parallelDownloads = it }
+    Heading("Connections per download")
+    var connections by remember { mutableIntStateOf(Settings.downloadConnections) }
+    ChoiceChips(listOf(1, 2, 4, 8, 12, 16), { it.toString() }, { it == connections }) { connections = it; Settings.downloadConnections = it }
+    Hint("Like a download manager (IDM): a file is fetched in 4 MB pieces, or a stream in segments, this many at the same time. " +
+        "More is usually faster; some sites limit connections (then try 4).")
+    var ask by remember { mutableStateOf(Settings.downloadAsk) }
+    SwitchRow("Ask which source and quality", "When you press Download, choose the source and, for streams, the quality. Off: the best one is picked.", ask) { ask = it; Settings.downloadAsk = it }
     Hint("Saved in the app's own folder (Android/data/io.github.sherazi5110.cloudstream/files/Movies/Stream Goat).")
     if (Build.VERSION.SDK_INT >= 23) PillButton("Allow running in the background", Icons.Filled.BatteryFull, primary = false, compact = true,
         modifier = Modifier.padding(top = 6.dp)) {

@@ -84,6 +84,7 @@ fun AppRoot() {
             }
             ProfileOverlays()
             UpdateDialog()
+            DownloadChooserDialog()
         }
     }
 }

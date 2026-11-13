@@ -704,6 +704,13 @@ class SettingsPage : StackPane(), Refreshable {
                     items.setAll(1, 2, 3, 4, 5); value = Settings.parallelDownloads
                     setOnAction { Settings.parallelDownloads = value }
                 }),
+                row("Connections per download", "Like a download manager (IDM): a file is fetched in 4 MB pieces, or a stream in segments, " +
+                    "this many at the same time. More is usually faster; some sites limit connections (then try 4).", javafx.scene.control.ComboBox<Int>().apply {
+                    items.setAll(1, 2, 4, 6, 8, 12, 16); value = Settings.downloadConnections
+                    setOnAction { Settings.downloadConnections = value }
+                }),
+                row("Ask which source and quality", "When you press Download, choose the source and, for streams, the quality. Off: the best one is picked.",
+                    Switch(Settings.downloadAsk) { Settings.downloadAsk = it }),
             ),
             section("Backup",
                 row("Back up", "Settings, profiles, My list, history and progress, repositories, the list of extensions and their settings, Live TV sources and Stremio add-ons, in one file. It also works with the Android app.",

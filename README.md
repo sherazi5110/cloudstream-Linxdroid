@@ -52,6 +52,15 @@ The `.deb` and Flatpak bring everything they need (VLC is installed with the `.d
 `cloudstream-linux`, so a new `.deb` updates an older install. Run it as **Stream Goat** from your app menu, or
 `streamgoat` in a terminal. [More: INSTALL.md → Linux](INSTALL.md)
 
+## New in 8.0.1
+
+- **Anime enhance on Android and Android TV:** the graphics chip enlarges low-quality animation with Catmull-Rom and
+  sharpens its outlines (no halos); the ✨ button in the player turns it on or off.
+- **Downloads like IDM:** files in 4 MB pieces over 8 connections at once, streams several segments at a time, with
+  speed and time left; pieces survive pauses and restarts. **Choose the source and quality** when you press Download.
+- **Continue Watching starts with the source you were using.** Windows/Linux: **Z** opens the Picture menu, **E**
+  toggles Anime enhance, and the menu says whether it's sharpening the video.
+
 ## New in 8.0: the big update
 
 - **A new look, drawn by Syed Ali Hamza.** The rainbow goat is the logo and the app icon everywhere (Windows, Linux,
