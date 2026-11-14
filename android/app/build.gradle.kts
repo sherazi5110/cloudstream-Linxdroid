@@ -22,6 +22,11 @@ android {
             major * 10000 + minor * 100 + patch
         } ?: 80001
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Google Drive backup: the project's Google sign-in client (GitHub secrets, docs/google-drive-setup.md).
+        // For an installed app Google doesn't treat the client secret as secret; it ships in the app.
+        fun quoted(name: String) = "\"" + (System.getenv(name) ?: "").replace("\"", "") + "\""
+        buildConfigField("String", "GOOGLE_CLIENT_ID", quoted("GOOGLE_CLIENT_ID"))
+        buildConfigField("String", "GOOGLE_CLIENT_SECRET", quoted("GOOGLE_CLIENT_SECRET"))
     }
 
     // The release key comes from the environment (GitHub Actions secrets, see android/README.md) and is never

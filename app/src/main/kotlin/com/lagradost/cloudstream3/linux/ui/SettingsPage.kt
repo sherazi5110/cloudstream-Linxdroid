@@ -714,7 +714,8 @@ class SettingsPage : StackPane(), Refreshable {
                 row("Ask which source and quality", "When you press Download, choose the source and, for streams, the quality. Off: the best one is picked.",
                     Switch(Settings.downloadAsk) { Settings.downloadAsk = it }),
             ),
-            section("Backup",
+            section("Google Drive backup", *cloudBackupRows(::row) { open("storage") }.toTypedArray()),
+            section("Backup file",
                 row("Back up", "Settings, profiles, My list, history and progress, repositories, the list of extensions and their settings, Live TV sources and Stremio add-ons, in one file. It also works with the Android app.",
                     button("Back up…", Icons.DOWNLOAD, "btn-ghost", "btn-small") {
                         val file = javafx.stage.FileChooser().apply {

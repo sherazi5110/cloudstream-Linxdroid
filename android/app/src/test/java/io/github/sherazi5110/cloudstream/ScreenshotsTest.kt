@@ -277,3 +277,28 @@ class CrashDialogTest {
         CrashReport.pending = null
     }
 }
+
+/** Google Drive sign-in on a 1080p TV: the code to enter at google.com/device, readable from the sofa, with a QR code. */
+class CloudSignInTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.NEXUS_10.copy(screenWidth = 1920, screenHeight = 1080,
+        orientation = com.android.resources.ScreenOrientation.LANDSCAPE), maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+    }
+
+    @Test
+    fun signInCode() {
+        val signIn = CloudBackup.SignIn("GQV-XHF-RNL", "https://www.google.com/device", "dev", 5, Long.MAX_VALUE)
+        paparazzi.snapshot("cloud-sign-in") {
+            CloudStreamTheme {
+                io.github.sherazi5110.cloudstream.ui.SimpleDialog("Sign in with Google", {}) {
+                    io.github.sherazi5110.cloudstream.ui.SignInBody(signIn, null)
+                }
+            }
+        }
+    }
+}

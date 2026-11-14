@@ -212,7 +212,9 @@ internal fun BackupSection() {
         }
     }
 
-    Heading("Backup")
+    CloudBackupSection()
+
+    Heading("Backup file")
     Hint("Settings, profiles, My list, history and progress, repositories, the list of extensions and their settings, Live TV " +
         "sources and Stremio add-ons, in one file. It also works with the Linux app. Downloads and extension files aren't in it.")
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->

@@ -160,3 +160,19 @@ val packageWindows by tasks.registering(Exec::class) {
         }
     })
 }
+
+// Google Drive backup: the project's Google sign-in client, from the environment (GitHub secrets
+// GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET, see docs/google-drive-setup.md), into a resource read by CloudConfig.
+val cloudConfig = tasks.register("cloudConfig") {
+    val out = layout.buildDirectory.dir("generated/cloud")
+    val id = providers.environmentVariable("GOOGLE_CLIENT_ID").orElse("")
+    val secret = providers.environmentVariable("GOOGLE_CLIENT_SECRET").orElse("")
+    inputs.property("id", id)
+    inputs.property("secret", secret)
+    outputs.dir(out)
+    doLast {
+        out.get().file("stream-goat-cloud.properties").asFile.apply { parentFile.mkdirs() }
+            .writeText("GOOGLE_CLIENT_ID=${id.get()}\nGOOGLE_CLIENT_SECRET=${secret.get()}\n")
+    }
+}
+sourceSets.main { resources.srcDir(cloudConfig) }

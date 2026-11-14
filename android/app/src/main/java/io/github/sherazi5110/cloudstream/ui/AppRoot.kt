@@ -86,6 +86,7 @@ fun AppRoot() {
             UpdateDialog()
             DownloadChooserDialog()
             CrashDialog()
+            CloudDialogs()
         }
     }
 }
