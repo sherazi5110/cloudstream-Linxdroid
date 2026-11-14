@@ -32,4 +32,51 @@ class OfficialClassesTest {
         assertNotNull(org.schabi.newpipe.extractor.NewPipe.getDownloader())
         assertNotNull(org.schabi.newpipe.extractor.ServiceList.YouTube)
     }
+
+    /** Found by scanning the 587 extensions of the official app's repository list (recloudstream/cs-repos). */
+    @Test
+    fun `official classes from the full repository scan are here`() {
+        Platform.init()
+        // M6+, RMC+, TF1+, StreamCenter register their own video actions while loading.
+        val plugin = object : com.lagradost.cloudstream3.plugins.Plugin() {}
+        plugin.filename = "/tmp/test.cs3"
+        val action = object : com.lagradost.cloudstream3.actions.VideoClickAction() {
+            override val name = com.lagradost.cloudstream3.utils.txt("Cast")
+            override fun shouldShow(context: android.content.Context?, video: com.lagradost.cloudstream3.ui.result.ResultEpisode?) = true
+            override suspend fun runAction(
+                context: android.content.Context?, video: com.lagradost.cloudstream3.ui.result.ResultEpisode,
+                result: com.lagradost.cloudstream3.ui.result.LinkLoadingResult, index: Int?,
+            ) {}
+        }
+        plugin.registerVideoClickAction(action)
+        val holder = com.lagradost.cloudstream3.actions.VideoClickActionHolder
+        assertEquals(action, holder.getByUniqueId(action.uniqueId()))
+        holder.removeFrom("/tmp/test.cs3")
+        assertEquals(null, holder.getByUniqueId(action.uniqueId()))
+        // They call txt(...) through the official file class name.
+        val textUtil = Class.forName("com.lagradost.cloudstream3.utils.TextUtilKt")
+        assertNotNull(textUtil.getMethod("txt", String::class.java))
+        assertNotNull(textUtil.getMethod("txtNull", String::class.java))
+        // SyncProvider, Wrapped, StreamCenter: the official saved-data records, kept like the official app.
+        val store = com.lagradost.cloudstream3.utils.DataStoreHelper
+        store.setResultWatchState(42, com.lagradost.cloudstream3.ui.WatchType.COMPLETED.internalId)
+        assertEquals(com.lagradost.cloudstream3.ui.WatchType.COMPLETED, store.getResultWatchState(42))
+        store.setLastWatched(42, 7, 3, 1)
+        assertEquals(3, store.getLastWatched(42)?.episode)
+        assertTrue(42 in store.getAllResumeStateIds().orEmpty())
+        store.deleteAllResumeStateIds()
+        assertEquals(null, store.getLastWatched(42))
+        store.setResultWatchState(42, com.lagradost.cloudstream3.ui.WatchType.NONE.internalId)
+        assertEquals(com.lagradost.cloudstream3.ui.WatchType.NONE, store.getResultWatchState(42))
+        // MegaRepo adds repositories with the older three-argument RepositoryData.
+        assertEquals("https://example.com/repo.json", com.lagradost.cloudstream3.ui.settings.extensions.RepositoryData(null, "Repo", "https://example.com/repo.json").url)
+        // PrimeVideo keeps its preferred audio language in the official player's setting.
+        com.lagradost.cloudstream3.ui.player.CS3IPlayer.preferredAudioTrackLanguage = "hi"
+        assertEquals("hi", com.lagradost.cloudstream3.ui.player.CS3IPlayer.preferredAudioTrackLanguage)
+        com.lagradost.cloudstream3.ui.player.CS3IPlayer.preferredAudioTrackLanguage = null
+        // 3isk asks OpenSubtitles with the official app's headers.
+        assertEquals("Cloudstream3 v0.2", com.lagradost.cloudstream3.syncproviders.providers.OpenSubtitlesApi.headers["user-agent"])
+        // Settings screens of 42 extensions use Android's XML parser types.
+        assertNotNull(Class.forName("org.xmlpull.v1.XmlPullParser"))
+    }
 }
