@@ -258,12 +258,12 @@ private fun LiveContent(all: List<LiveTv.Channel>, now: Long, guideVersion: Int,
         item(span = { GridItemSpan(maxLineSpan) }) { chipRow() }
         if (recent.isNotEmpty() && filter == "All" && query.isBlank()) {
             item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle("Recently watched", Modifier.padding(top = 8.dp)) }
-            items(recent.take(if (wide) 5 else 4), key = { "recent|" + it.key }) { c ->
+            uniqueItems(recent.take(if (wide) 5 else 4), key = { "recent|" + it.key }) { c ->
                 ChannelCard(c, now, guideVersion, onFocus = { selected = c }) { LivePlayback.play(scope, c, all) }
             }
             item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle(if (filter == "All") "All channels" else filter, Modifier.padding(top = 8.dp)) }
         }
-        items(shown, key = { it.key }) { c ->
+        uniqueItems(shown, key = { it.key }) { c ->
             ChannelCard(c, now, guideVersion, onFocus = { selected = c }) { LivePlayback.play(scope, c, shown) }
         }
         if (shown.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {

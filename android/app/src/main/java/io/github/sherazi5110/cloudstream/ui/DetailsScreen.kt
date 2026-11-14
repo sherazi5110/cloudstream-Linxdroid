@@ -276,13 +276,13 @@ private fun Details(api: MainAPI, r: LoadResponse) {
                         ) { season = keys[it] }
                     }
                     if (wide) {
-                        items(episodes.chunked(columns), key = { row -> "eps|${row.first().dub}|${row.first().data}" }) { row ->
+                        uniqueItems(episodes.chunked(columns), key = { row -> "eps|${row.first().dub}|${row.first().data}" }) { row ->
                             Row(Modifier.padding(horizontal = edge, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                                 row.forEach { ep -> EpisodeCard(api, r, ep, libraryVersion, Modifier.weight(1f)) }
                                 repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                             }
                         }
-                    } else items(episodes, key = { "ep|${it.dub}|${it.data}" }) { ep ->
+                    } else uniqueItems(episodes, key = { "ep|${it.dub}|${it.data}" }) { ep ->
                         EpisodeRow(api, r, ep, libraryVersion)
                     }
                 }
@@ -310,7 +310,7 @@ private fun Details(api: MainAPI, r: LoadResponse) {
                         Column(Modifier.padding(top = 24.dp)) {
                             SectionTitle("More like this", Modifier.padding(horizontal = edge))
                             LazyRow(contentPadding = PaddingValues(horizontal = edge, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                items(recs, key = { it.url }) { item -> PosterCard(item, if (wide) 140.dp else 108.dp) { openTitle(item) } }
+                                uniqueItems(recs, key = { it.url }) { item -> PosterCard(item, if (wide) 140.dp else 108.dp) { openTitle(item) } }
                             }
                         }
                     }

@@ -117,7 +117,7 @@ private fun PhoneHome(state: HomeState) {
         if (state.continueWatching.isNotEmpty()) item(key = "continue") {
             ContinueRow(state.continueWatching, cardWidth = 200.dp)
         }
-        items(state.sections, key = { "${it.api.name}|${it.order}" }) { section ->
+        uniqueItems(state.sections, key = { "${it.api.name}|${it.order}" }) { section ->
             CatalogRow(section, posterWidth = 112.dp)
         }
         if (state.loading && state.sections.isEmpty()) item { Spinner(Modifier.fillMaxWidth().height(200.dp)) }
@@ -229,7 +229,7 @@ fun ContinueRow(entries: List<WatchEntry>, cardWidth: androidx.compose.ui.unit.D
             contentPadding = PaddingValues(horizontal = edge, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(entries, key = { "${it.apiName}|${it.url}" }) { e ->
+            uniqueItems(entries, key = { "${it.apiName}|${it.url}" }) { e ->
                 var menu by remember { mutableStateOf(false) }
                 // The remote's Menu key opens the same menu as a long press.
                 Box(Modifier.onPreviewKeyEvent {
@@ -277,7 +277,7 @@ fun CatalogRow(
             contentPadding = PaddingValues(horizontal = edge, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(if (isWide) 14.dp else 10.dp),
         ) {
-            items(section.list.list, key = { it.url }) { item ->
+            uniqueItems(section.list.list, key = { it.url }) { item ->
                 PosterCard(item, posterWidth, onFocus = onFocus?.let { { it(item) } }) { openTitle(item) }
             }
             item(key = "view-all") { ViewAllTile(section.list.name, posterWidth) { viewAll() } }
@@ -313,7 +313,7 @@ internal fun WideHome(state: HomeState) {
             if (state.continueWatching.isNotEmpty()) item(key = "continue") {
                 ContinueRow(state.continueWatching, 280.dp)
             }
-            items(state.sections, key = { "${it.api.name}|${it.order}" }) { section ->
+            uniqueItems(state.sections, key = { "${it.api.name}|${it.order}" }) { section ->
                 CatalogRow(section, 140.dp, onFocus = if (isTv) { item -> focused = item } else null)
             }
             if (state.loading && state.sections.isEmpty()) item { Spinner(Modifier.fillMaxWidth().height(200.dp)) }
@@ -461,7 +461,7 @@ private fun HomeEditor(state: HomeState, onClose: () -> Unit) {
             Text("Pick an extension, then choose and order its catalogs.", style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 4.dp)) {
-                items(state.providers, key = { it.name }) { p ->
+                uniqueItems(state.providers, key = { it.name }) { p ->
                     val selected = p == api
                     Text(p.name, style = MaterialTheme.typography.labelMedium, modifier = Modifier
                         .card(RoundedCornerShape(50)) { api = p }
@@ -470,7 +470,8 @@ private fun HomeEditor(state: HomeState, onClose: () -> Unit) {
                 }
             }
             LazyColumn(Modifier.weight(1f).padding(top = 10.dp)) {
-                items(entries.size, key = { entries[it].section.name }) { i ->
+                val entryKeys = uniqueKeys(entries) { it.section.name }
+                items(entries.size, key = { entryKeys[it] }) { i ->
                     val e = entries[i]
                     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Row(Modifier.weight(1f).card(RoundedCornerShape(8.dp), focusScale = 1.02f) { entries[i] = e.copy(enabled = !e.enabled) }

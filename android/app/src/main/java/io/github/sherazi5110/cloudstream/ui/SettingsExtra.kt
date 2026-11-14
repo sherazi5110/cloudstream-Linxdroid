@@ -322,7 +322,7 @@ fun ProviderTestsScreen() {
             Hint("Each extension: home page, a search, a title page and its sources, like when you use it. Developers' tool: failures often mean the site is down or moved.")
         }
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(rows, key = { it.api.name }) { r ->
+            uniqueItems(rows, key = { it.api.name }) { r ->
                 val t = tick
                 Row(Modifier.fillMaxWidth().background(Palette.surface, RoundedCornerShape(10.dp)).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     when (r.state) {

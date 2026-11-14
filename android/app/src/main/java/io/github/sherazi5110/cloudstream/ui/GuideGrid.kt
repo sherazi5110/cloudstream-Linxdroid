@@ -77,7 +77,7 @@ fun GuideGrid(channels: List<LiveTv.Channel>, now: Long, guideVersion: Int, wide
             }
         }
         LazyColumn(Modifier.fillMaxSize()) {
-            items(channels, key = { it.key }) { c ->
+            uniqueItems(channels, key = { it.key }) { c ->
                 val programmes = remember(c, guideVersion, start) { LiveTv.programmes(c, start, end) }
                 Row(Modifier.fillMaxWidth().height(rowH)) {
                     Row(Modifier.width(nameW).fillMaxHeight().card(RoundedCornerShape(8.dp), focusScale = 1.02f) { onPlay(c) }

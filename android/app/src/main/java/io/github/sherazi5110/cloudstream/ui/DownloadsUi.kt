@@ -188,7 +188,7 @@ fun DownloadsTab() {
             Text("Saved in ${Downloads.folder().path.substringAfter("/Android/").let { "Android/$it" }}. Uninstalling the app removes them.",
                 style = MaterialTheme.typography.bodySmall, color = Palette.muted)
         }
-        items(groups, key = { it.first().apiName + "|" + it.first().url }) { g ->
+        uniqueItems(groups, key = { it.first().apiName + "|" + it.first().url }) { g ->
             val first = g.first()
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(Modifier.width(64.dp).height(96.dp).background(Palette.surfaceHigh, RoundedCornerShape(8.dp))) {
@@ -282,7 +282,7 @@ fun DownloadChooserDialog() {
                 val s = stream
                 if (s == null) {
                     item { ChooserRow("AUTO", "Best (automatic)", "The best source at your preferred quality", true) { pick(null) } }
-                    items(sorted, key = { it.url }) { l ->
+                    uniqueItems(sorted, key = { it.url }) { l ->
                         val isStream = l.type == com.lagradost.cloudstream3.utils.ExtractorLinkType.M3U8 || l.url.substringBefore('?').endsWith(".m3u8")
                         ChooserRow(com.lagradost.cloudstream3.utils.Qualities.getStringByInt(l.quality).ifEmpty { "AUTO" }, l.name,
                             if (isStream) "Stream · choose its quality next" else "File", false) {

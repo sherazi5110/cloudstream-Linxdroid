@@ -106,7 +106,7 @@ fun AddFromPhoneScreen() {
         }
         SectionTitle(if (PhoneLink.received.isEmpty()) "Waiting for your phone…" else "From your phone", Modifier.padding(top = 16.dp))
         LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(PhoneLink.received, key = { it.id }) { item ->
+            uniqueItems(PhoneLink.received, key = { it.id }) { item ->
                 Row(Modifier.fillMaxWidth().background(Palette.surface, RoundedCornerShape(12.dp)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(item.kind.label, style = MaterialTheme.typography.labelMedium, color = Palette.accent)

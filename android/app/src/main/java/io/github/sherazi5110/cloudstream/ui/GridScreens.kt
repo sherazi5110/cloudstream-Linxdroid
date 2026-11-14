@@ -104,7 +104,7 @@ fun CatalogScreen(screen: Screen.Catalog) {
         BackBar(screen.title)
         LazyVerticalGrid(gridCells, state = grid, contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            items(items, key = { it.url }) { item -> PosterCard(item, 200.dp, Modifier.fillMaxWidth()) { openTitle(item) } }
+            uniqueItems(items, key = { it.url }) { item -> PosterCard(item, 200.dp, Modifier.fillMaxWidth()) { openTitle(item) } }
             if (loading) item(span = { GridItemSpan(maxLineSpan) }) { Spinner(Modifier.fillMaxWidth().height(80.dp)) }
             if (!loading && !hasNext && items.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
                 EmptyState("Nothing here", "The extension returned no titles for this catalog.", Modifier.fillMaxWidth())
@@ -178,11 +178,11 @@ fun SearchScreen() {
             results.isEmpty() && !App.online() -> OfflineState(Modifier.fillMaxWidth()) { submit(query) }
             results.isEmpty() -> EmptyState("Nothing found", "No extension had results for \"$query\".", Modifier.fillMaxWidth())
             else -> androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-                items(results, key = { it.first.name }) { (api, list) ->
+                uniqueItems(results, key = { it.first.name }) { (api, list) ->
                     Column(Modifier.padding(top = 8.dp)) {
                         SectionTitle("${api.name} · ${list.size}", Modifier.padding(horizontal = 16.dp))
                         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(list, key = { it.url }) { item -> PosterCard(item, if (isWide) 140.dp else 112.dp) { openTitle(item) } }
+                            uniqueItems(list, key = { it.url }) { item -> PosterCard(item, if (isWide) 140.dp else 112.dp) { openTitle(item) } }
                         }
                     }
                 }
@@ -216,7 +216,7 @@ fun LibraryScreen() {
             if (bookmarks.isEmpty()) EmptyState("Your list is empty", "Tap + My list on a title page to keep it here.", Modifier.fillMaxWidth())
             else LazyVerticalGrid(gridCells, contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(bookmarks, key = { "${it.apiName}|${it.url}" }) { b ->
+                uniqueItems(bookmarks, key = { "${it.apiName}|${it.url}" }) { b ->
                     Column {
                         Box(Modifier.fillMaxWidth().height(if (isWide) 210.dp else 160.dp).card { Nav.open(Screen.Details(b.apiName, b.url, b.name, b.posterUrl)) }) {
                             NetImage(b.posterUrl, Modifier.fillMaxSize())
@@ -229,7 +229,7 @@ fun LibraryScreen() {
             if (history.isEmpty()) EmptyState("No history yet", "Titles you watch appear here.", Modifier.fillMaxWidth())
             else LazyVerticalGrid(if (isWide) GridCells.Adaptive(260.dp) else GridCells.Adaptive(170.dp), contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(history, key = { "${it.apiName}|${it.url}" }) { e ->
+                uniqueItems(history, key = { "${it.apiName}|${it.url}" }) { e ->
                     var menu by remember { mutableStateOf(false) }
                     Box {
                         WideCard(e.name, if (e.finished) "Watched" else e.leftText(), e.posterUrl, e.progress.toFloat(), 400.dp,

@@ -124,7 +124,7 @@ fun ExtensionsScreen() {
                 Text("Add a repository by its address, a cloudstreamrepo:// link or a shortcode, the same ones the official app accepts.",
                     style = MaterialTheme.typography.bodyMedium)
             }
-            items(repos, key = { "repo|${it.url}" }) { repo ->
+            uniqueItems(repos, key = { "repo|${it.url}" }) { repo ->
                 ListRow(repo.name, repo.description ?: repo.url, repo.iconUrl, onClick = { Nav.open(Screen.Repository(repo.url, repo.name)) }) {
                     IconAction(Icons.Filled.Delete, "Remove") {
                         RepositoryManager.removeRepository(repo.url)
@@ -135,7 +135,7 @@ fun ExtensionsScreen() {
             }
             item { SectionTitle("Installed · ${installed.size}", Modifier.padding(top = 12.dp)) }
             if (installed.size > 6) item { ExtensionSearch(query) { query = it } }
-            items(shownInstalled, key = { "plugin|${it.internalName}" }) { data ->
+            uniqueItems(shownInstalled, key = { "plugin|${it.internalName}" }) { data ->
                 val failure = PluginManager.failures[data.internalName]
                 val loaded = PluginManager.loaded.values.firstOrNull { it.data.internalName == data.internalName }
                 val detail = when {
@@ -281,7 +281,7 @@ fun RepositoryScreen(screen: Screen.Repository) {
                         }
                     }
                 }
-                items(shown, key = { it.plugin.internalName }) { w ->
+                uniqueItems(shown, key = { it.plugin.internalName }) { w ->
                     val p = w.plugin
                     val have = installed[p.internalName]
                     val detail = listOfNotNull(
@@ -343,7 +343,7 @@ private fun StremioTab() {
             PillButton("Add from phone (no typing)", Icons.Filled.PhoneAndroid, Modifier.padding(top = 10.dp), primary = false, compact = true) { Nav.open(Screen.AddFromPhone) }
             if (busy) Spinner(Modifier.fillMaxWidth().height(48.dp))
         }
-        items(addons, key = { it.url }) { a ->
+        uniqueItems(addons, key = { it.url }) { a ->
             ListRow(a.manifest.name, listOf("v${a.manifest.version}", a.manifest.types.joinToString(", "), a.manifest.description).filter { it.isNotBlank() }.joinToString(" · "),
                 a.manifest.logo) {
                 androidx.compose.material3.Switch(a.enabled, onCheckedChange = { io.github.sherazi5110.cloudstream.StremioAddons.setEnabled(a.url, it); version++ },

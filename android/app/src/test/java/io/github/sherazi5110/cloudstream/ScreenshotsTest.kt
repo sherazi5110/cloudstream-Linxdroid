@@ -302,3 +302,38 @@ class CloudSignInTest {
         }
     }
 }
+
+/**
+ * An extension listing the same title twice in a Home row once closed the app ("Key … was already used"; reported
+ * from a Lenovo tablet with an aoneroom extension). The row must show both, and keys must stay unique.
+ */
+class DuplicateItemsTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+    }
+
+    @Test
+    fun keysStayUnique() {
+        val keys = io.github.sherazi5110.cloudstream.ui.uniqueKeys(listOf("a", "b", "a", "a#2", "a")) { it }
+        org.junit.Assert.assertEquals(listOf("a", "b", "a#2", "a#2#2", "a#3"), keys)
+        org.junit.Assert.assertEquals(keys.size, keys.toSet().size)
+    }
+
+    @Test
+    fun homeRowWithTheSameTitleTwice() {
+        val api = object : com.lagradost.cloudstream3.MainAPI() { override var name = "Test"; override var mainUrl = "https://example.com" }
+        val url = "https://api3.aoneroom.com/2034847458500429816"
+        val item = api.newMovieSearchResponse("Same title", url, com.lagradost.cloudstream3.TvType.Movie)
+        val other = api.newMovieSearchResponse("Other title", "https://example.com/other", com.lagradost.cloudstream3.TvType.Movie)
+        val section = io.github.sherazi5110.cloudstream.Engine.HomeSection(0, api, com.lagradost.cloudstream3.MainPageData("Trending", ""),
+            com.lagradost.cloudstream3.HomePageList("Trending", listOf(item, other, item)))
+        paparazzi.snapshot("home-row-duplicates") {
+            CloudStreamTheme { io.github.sherazi5110.cloudstream.ui.CatalogRow(section, 112.dp) }
+        }
+    }
+}
