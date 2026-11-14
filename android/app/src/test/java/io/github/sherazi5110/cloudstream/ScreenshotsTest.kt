@@ -246,3 +246,34 @@ class AddFromPhoneScreenTest {
         }
     }
 }
+
+/** After a crash, the next start shows what went wrong (Copy / Share), readable on a TV. */
+class CrashDialogTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.NEXUS_10.copy(screenWidth = 1920, screenHeight = 1080,
+        orientation = com.android.resources.ScreenOrientation.LANDSCAPE), maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+        Nav.stack.clear()
+    }
+
+    @Test
+    fun crashReport() {
+        CrashReport.pending = """
+            Stream Goat closed because of an error
+            Stream Goat 8.0.1 on Amazon AFTMM, Android 9 (API 28), armeabi-v7a
+            When: 2026-11-14 10:58:12
+            Was playing: AniList: Frieren (Episode 1); source Gravix [M3U8] from 127.0.0.1; Anime enhance on, GPU view on
+            Thread: main
+
+            java.lang.IllegalStateException: example
+            	at org.videolan.libvlc.AWindow.attachViews(AWindow.java:224)
+            	at io.github.sherazi5110.cloudstream.player.PlayerController.attachEnhanced(PlayerController.kt:470)
+        """.trimIndent()
+        paparazzi.snapshot("crash-dialog") { CloudStreamTheme { io.github.sherazi5110.cloudstream.ui.CrashDialog() } }
+        CrashReport.pending = null
+    }
+}

@@ -43,6 +43,7 @@ object App {
 
     fun init(context: Context) {
         this.context = context
+        CrashReport.install()
         Network.init()
         // NewPipe Extractor, as the official app sets it up (YouTube extensions call it directly).
         runCatching { org.schabi.newpipe.extractor.NewPipe.init(com.lagradost.cloudstream3.DownloaderTestImpl.getInstance()) }

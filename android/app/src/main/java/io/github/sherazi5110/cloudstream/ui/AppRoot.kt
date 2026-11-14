@@ -85,6 +85,7 @@ fun AppRoot() {
             ProfileOverlays()
             UpdateDialog()
             DownloadChooserDialog()
+            CrashDialog()
         }
     }
 }

@@ -217,6 +217,8 @@ class PlayerController(
             }
             if (keep > 0) addOption(":start-time=${keep / 1000.0}")
         }
+        io.github.sherazi5110.cloudstream.CrashReport.playing("${api.name}: ${response.name} (${playable.label}); source ${link.name} [${link.type}] from " +
+            "${runCatching { Uri.parse(link.url).host }.getOrNull() ?: "?"}; Anime enhance ${if (enhanceOn) "on" else "off"}, GPU view ${if (useGpu) "on" else "off"}")
         player.media = media
         media.release()
         player.play()
@@ -467,13 +469,17 @@ class PlayerController(
         view.enhance = enhanceOn
         view.zoom = zoom
         view.onSurface = { texture ->
-            if (gpu === view) {
+            if (gpu === view) try {
                 val vout = player.vlcVout
                 if (vout.areViewsAttached()) vout.detachViews()
                 vout.setVideoSurface(texture)
                 vout.setSubtitlesView(view.subtitles)
                 vout.setWindowSize(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1))
                 vout.attachViews { _, _, _, visibleWidth, visibleHeight, sarNum, sarDen -> view.setVideoSize(visibleWidth, visibleHeight, sarNum, sarDen) }
+            } catch (t: Throwable) {
+                // The video engine refused the GPU view: play on the plain view instead of failing.
+                runCatching { player.vlcVout.detachViews() }
+                view.onUnsupported?.invoke(t.message ?: t.javaClass.simpleName)
             }
         }
         view.onUnsupported = { why ->
@@ -540,6 +546,7 @@ class PlayerController(
     }
 
     fun release() {
+        io.github.sherazi5110.cloudstream.CrashReport.playing(null)
         save()
         scope.cancel()
         player.setEventListener(null)

@@ -208,7 +208,12 @@ object Settings {
     /** Anime enhance (GPU upscaling + sharpening): AUTO (anime and cartoons up to 1440p), ON, OFF. */
     var animeEnhance: String
         get() = string("anime_enhance", "AUTO")
-        set(v) = put("anime_enhance", v)
+        set(v) { put("anime_enhance", v); gpuViewCrashed = false }
+
+    /** The app closed in native code while Anime enhance's GPU view was drawing: it's off until the setting changes. */
+    var gpuViewCrashed: Boolean
+        get() = string("gpu_view_crashed", "false").toBoolean()
+        set(v) = put("gpu_view_crashed", v)
 
     /** HDR video on HDR screens: AUTO (HDR sources), ON (always the HDR-capable surface), OFF. */
     var hdrOutput: String

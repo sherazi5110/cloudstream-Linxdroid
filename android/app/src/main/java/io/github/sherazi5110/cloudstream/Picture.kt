@@ -27,7 +27,8 @@ object Picture {
     }
 
     /** Set when this device's graphics chip can't run the enhance shader: it isn't offered again until restart. */
-    @Volatile var enhanceUnsupported: String? = null
+    @Volatile var enhanceUnsupported: String? =
+        if (Settings.gpuViewCrashed) "Stream Goat closed while it was drawing the video on this device (change the setting in Settings → Player to try again)" else null
 
     private val hdrWords = Regex("""(?<![a-z0-9])(hdr10\+?|hdr|dv|dovi|dolby[ ._-]?vision|hlg|bt\.?2020)(?![a-z0-9])""", RegexOption.IGNORE_CASE)
 
