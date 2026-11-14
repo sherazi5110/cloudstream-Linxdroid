@@ -182,7 +182,7 @@ class AppWindow(val stage: Stage) : StackPane() {
             val item = StackPane(icon(tab.icon, 22.0)).apply {
                 styleClass += "rail-item"
                 if (tab == currentTab) styleClass += "active"
-                onClick { show(tab) }
+                onClick { if (tab == Tab.SEARCH) searchFrom(tab) else show(tab) }
                 tooltip(tab.label)
             }
             navItems[tab] = item
@@ -270,6 +270,13 @@ class AppWindow(val stage: Stage) : StackPane() {
         content.padding = if (fullBleed) Insets.EMPTY else Insets(TopBar.HEIGHT, 0.0, 0.0, 0.0)
         topBar.setSolid(!fullBleed)
         topBar.pageChanged(node, currentTab)
+    }
+
+    /** Home's Search button: searches only the extension Home shows; elsewhere, every extension. */
+    fun searchFrom(tab: Tab) {
+        val only = if (tab == Tab.HOME) (pages[Tab.HOME] as? HomePage)?.searchProvider else null
+        show(Tab.SEARCH)
+        (pages[Tab.SEARCH] as? SearchPage)?.scopeTo(only)
     }
 
     /** Opens Search with [query] already running (e.g. a similar title from TMDB). */

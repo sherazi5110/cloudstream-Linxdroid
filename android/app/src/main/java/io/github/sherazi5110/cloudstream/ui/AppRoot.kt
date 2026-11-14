@@ -129,7 +129,7 @@ fun TopBar(modifier: Modifier = Modifier, start: @Composable () -> Unit = {}) {
         start()
         Spacer(Modifier.weight(1f))
         Row(
-            Modifier.card(RoundedCornerShape(50)) { Nav.select(Tab.SEARCH) }
+            Modifier.card(RoundedCornerShape(50)) { Nav.searchHome() }
                 .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(50))
                 .padding(horizontal = 16.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,

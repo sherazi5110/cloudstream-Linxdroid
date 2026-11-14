@@ -59,6 +59,9 @@ class HomePage : StackPane(), Refreshable, TopBarActions {
     private var providers: List<MainAPI> = emptyList()
     private var sources: List<Source> = emptyList()
     private var current: Source? = null
+
+    /** The one extension Home shows, for its Search button (null for a combined view). */
+    val searchProvider: String? get() = current?.apis?.singleOrNull()?.name
     private var job: Job? = null
     private var hero: Hero? = null
     private var heroIndex = Int.MAX_VALUE

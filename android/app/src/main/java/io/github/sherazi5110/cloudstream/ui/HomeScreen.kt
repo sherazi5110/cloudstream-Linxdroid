@@ -165,7 +165,7 @@ private fun PhoneHero(state: HomeState) {
             EditCatalogsButton(state)
             Spacer(Modifier.weight(1f))
             Icon(Icons.Filled.Search, "Search", tint = Color.White,
-                modifier = Modifier.size(40.dp).card(CircleShape) { Nav.select(Tab.SEARCH) }.padding(8.dp))
+                modifier = Modifier.size(40.dp).card(CircleShape) { Nav.searchHome() }.padding(8.dp))
         }
         if (featured.size > 1) Row(
             Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),

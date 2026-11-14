@@ -18,10 +18,7 @@ import kotlinx.coroutines.launch
  */
 class TopBar(private val window: AppWindow) : StackPane() {
     private val actions = HBox(10.0).apply { alignment = Pos.CENTER_LEFT }
-    private val search = button("Search", Icons.SEARCH, "topbar-search") {
-        window.show(Tab.SEARCH)
-        (window.lookup(".search-field") as? javafx.scene.control.TextField)?.requestFocus()
-    }
+    private val search = button("Search", Icons.SEARCH, "topbar-search") { window.searchFrom(tab) }
     private val profile = HBox(9.0).apply { styleClass += "topbar-profile"; alignment = Pos.CENTER }
     private var page: Node? = null
     private var tab = Tab.HOME

@@ -337,3 +337,34 @@ class DuplicateItemsTest {
         }
     }
 }
+
+/** Search with recent searches (this profile's), to search again with one tap. */
+class RecentSearchesTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.NEXUS_10.copy(orientation = com.android.resources.ScreenOrientation.LANDSCAPE), maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+    }
+
+    @Test
+    fun newestFirstWithoutRepeats() {
+        var list = emptyList<String>()
+        listOf("Frieren", "Heart of the Beast", "frieren ", "Student of the Year").forEach { list = SearchHistory.merge(list, it) }
+        org.junit.Assert.assertEquals(listOf("Student of the Year", "frieren", "Heart of the Beast"), list)
+        org.junit.Assert.assertEquals(20, (1..30).fold(emptyList<String>()) { l, n -> SearchHistory.merge(l, "q$n") }.size)
+    }
+
+    @Test
+    fun recentSearches() {
+        paparazzi.snapshot("search-recent") {
+            CloudStreamTheme {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.background(io.github.sherazi5110.cloudstream.ui.Palette.background)) {
+                    io.github.sherazi5110.cloudstream.ui.RecentSearches({}, listOf("Student of the Year", "Frieren", "Heart of the Beast")) {}
+                }
+            }
+        }
+    }
+}

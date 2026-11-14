@@ -149,7 +149,7 @@ object Profiles {
     fun file(name: String): String = current.id.let { if (it == DEFAULT) name else "$name@$it" }
 
     /** Preference files that belong to a profile. */
-    val PROFILE_FILES = listOf("library", "home_catalogs", "profile_settings")
+    val PROFILE_FILES = listOf("library", "home_catalogs", "profile_settings", "search_history")
 }
 
 /** Applies the current kids profile's rules; everything passes for other profiles. */

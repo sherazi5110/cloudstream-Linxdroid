@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -132,10 +133,14 @@ fun SearchScreen() {
     }
     val submit: (String) -> Unit = { q -> Nav.searchQuery = q; Nav.searchSubmitted = q.trim(); suggestions = emptyList(); focusManager.clearFocus() }
 
-    LaunchedEffect(query) {
+    // Home's Search button searches only the extension Home shows; the Search tab searches all of them.
+    val scope = Nav.searchScope
+    val scopedApi = remember(scope) { scope?.let { name -> Engine.providers().firstOrNull { it.name == name } } }
+    LaunchedEffect(query, scopedApi) {
         results.clear()
         if (query.isBlank()) return@LaunchedEffect
-        val apis = Engine.providers()
+        io.github.sherazi5110.cloudstream.SearchHistory.add(query)
+        val apis = scopedApi?.let { listOf(it) } ?: Engine.providers()
         searching = apis.size
         Engine.search(query.trim(), apis).collect { batch ->
             searching--
@@ -150,7 +155,7 @@ fun SearchScreen() {
             // The text being typed (the search that ran is Nav.searchSubmitted).
             value = typed,
             onValueChange = { Nav.searchQuery = it; if (it.isBlank()) Nav.searchSubmitted = "" },
-            placeholder = { Text("Search films, series, anime…") },
+            placeholder = { Text(scopedApi?.let { "Search in ${it.name}…" } ?: "Search films, series, anime…") },
             leadingIcon = { Icon(Icons.Filled.Search, null) },
             trailingIcon = { if (typed.isNotEmpty()) Icon(Icons.Filled.Close, "Clear", Modifier.card(CircleShape) { Nav.searchQuery = ""; Nav.searchSubmitted = "" }.padding(6.dp)) },
             singleLine = true,
@@ -161,6 +166,13 @@ fun SearchScreen() {
                 unfocusedBorderColor = Color.Transparent, focusedBorderColor = Palette.accent),
             modifier = Modifier.fillMaxWidth().padding(16.dp).focusRequester(focus),
         )
+        if (scopedApi != null) Row(
+            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Searching in ${scopedApi.name}", style = MaterialTheme.typography.bodyMedium, color = Palette.muted)
+            PillButton("Search all extensions", Icons.Filled.Search, primary = false, compact = true) { Nav.searchScope = null }
+        }
         if (suggestions.isNotEmpty()) Column(
             Modifier.padding(horizontal = 16.dp).fillMaxWidth().background(Palette.surfaceHigh, RoundedCornerShape(14.dp)).padding(6.dp),
         ) {
@@ -173,10 +185,18 @@ fun SearchScreen() {
             }
         }
         when {
-            query.isBlank() -> if (suggestions.isEmpty()) EmptyState("Search", "Type a title and press Search, or pick a suggestion; every installed extension is searched at once.", Modifier.fillMaxWidth())
+            query.isBlank() -> if (suggestions.isEmpty()) RecentSearches(submit) {
+                EmptyState("Search", if (scopedApi != null) "Type a title and press Search to look for it in ${scopedApi.name}."
+                    else "Type a title and press Search, or pick a suggestion; every installed extension is searched at once.", Modifier.fillMaxWidth())
+            }
             results.isEmpty() && searching > 0 -> Spinner(Modifier.fillMaxWidth().height(200.dp))
             results.isEmpty() && !App.online() -> OfflineState(Modifier.fillMaxWidth()) { submit(query) }
-            results.isEmpty() -> EmptyState("Nothing found", "No extension had results for \"$query\".", Modifier.fillMaxWidth())
+            results.isEmpty() -> EmptyState("Nothing found", (scopedApi?.let { "${it.name} had" } ?: "No extension had") + " results for \"$query\".", Modifier.fillMaxWidth())
+            // One extension: its results as a grid.
+            scopedApi != null -> LazyVerticalGrid(GridCells.Adaptive(if (isWide) 140.dp else 112.dp),
+                contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                uniqueItems(results.flatMap { it.second }, key = { it.url }) { item -> PosterCard(item, 200.dp, Modifier.fillMaxWidth()) { openTitle(item) } }
+            }
             else -> androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
                 uniqueItems(results, key = { it.first.name }) { (api, list) ->
                     Column(Modifier.padding(top = 8.dp)) {
@@ -244,3 +264,35 @@ fun LibraryScreen() {
 
 /** Set before opening the Library tab to show its Downloads (from the offline screen). */
 var openLibraryDownloads = false
+
+/** Recent searches (this profile's), to search again with one tap; [empty] when there are none. */
+@Composable
+internal fun RecentSearches(
+    onSearch: (String) -> Unit,
+    initial: List<String> = io.github.sherazi5110.cloudstream.SearchHistory.all(),
+    empty: @Composable () -> Unit,
+) {
+    var recent by remember { mutableStateOf(initial) }
+    if (recent.isEmpty()) { empty(); return }
+    androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)) {
+        item {
+            Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                SectionTitle("Recent searches", Modifier.weight(1f))
+                PillButton("Clear", null, primary = false, compact = true) {
+                    io.github.sherazi5110.cloudstream.SearchHistory.clear(); recent = emptyList()
+                }
+            }
+        }
+        uniqueItems(recent, key = { "recent|$it" }) { q ->
+            Row(Modifier.fillMaxWidth().card(RoundedCornerShape(10.dp), focusScale = 1.02f) { onSearch(q) }.padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Filled.History, null, tint = Palette.muted, modifier = Modifier.size(20.dp))
+                Text(q, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f))
+                Icon(Icons.Filled.Close, "Remove $q", tint = Palette.muted, modifier = Modifier.size(32.dp).card(CircleShape) {
+                    io.github.sherazi5110.cloudstream.SearchHistory.remove(q); recent = io.github.sherazi5110.cloudstream.SearchHistory.all()
+                }.padding(6.dp))
+            }
+        }
+    }
+}

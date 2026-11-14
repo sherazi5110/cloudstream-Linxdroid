@@ -3,6 +3,7 @@ package com.lagradost.cloudstream3.linux.ui
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.linux.Engine
 import com.lagradost.cloudstream3.linux.PluginManager
+import com.lagradost.cloudstream3.linux.SearchHistory
 import javafx.animation.PauseTransition
 import javafx.geometry.Pos
 import javafx.scene.control.ProgressIndicator
@@ -19,7 +20,7 @@ class SearchPage : StackPane(), Refreshable {
         styleClass.setAll("text-field", "search-field")
         promptText = "Search movies, series, anime…"
     }
-    private val filter = ChipGroup { run() }
+    private val filter = ChipGroup { promptText(); run() }
     private var apis: List<MainAPI> = emptyList()
     private val status = hbox(10.0)
     private val results = VBox(30.0)
@@ -64,11 +65,43 @@ class SearchPage : StackPane(), Refreshable {
         field.selectAll()
     }
 
+    /** Search only [provider] (Home's Search button), or every extension (null). Runs again if there's a search. */
+    fun scopeTo(provider: String?) {
+        val index = provider?.let { name -> apis.indexOfFirst { it.name == name } }?.takeIf { it >= 0 }
+        filter.select((index ?: -1) + 1, notify = false)
+        promptText()
+        if (field.text.trim().length >= 2 && lastQuery.isNotEmpty()) run()
+        javafx.application.Platform.runLater { focusField() }
+    }
+
+    private fun promptText() {
+        val one = apis.getOrNull(filter.selected - 1)
+        field.promptText = if (one != null) "Search in ${one.name}…" else "Search movies, series, anime…"
+    }
+
     override fun onShow() {
-        if (results.children.isEmpty() && field.text.isBlank()) {
-            results.children.setAll(emptyState(Icons.SEARCH, "Find something to watch", "Results stream in from every installed extension as each one answers. Press / anywhere to search."))
-        }
+        if (results.children.isEmpty() && field.text.isBlank()) showRecent()
         javafx.application.Platform.runLater { field.requestFocus() }
+    }
+
+    /** Recent searches (this profile's), one click to search again; the welcome text when there are none. */
+    private fun showRecent() {
+        val recent = SearchHistory.all()
+        if (recent.isEmpty()) {
+            results.children.setAll(emptyState(Icons.SEARCH, "Find something to watch", "Results stream in from every installed extension as each one answers. Press / anywhere to search."))
+            return
+        }
+        results.children.setAll(vbox(6.0,
+            hbox(12.0, label("Recent searches", "h3"), spacer(), button("Clear", null, "btn-ghost", "btn-small") { SearchHistory.clear(); showRecent() }),
+            *recent.map { q ->
+                hbox(12.0, icon(Icons.SEARCH, 16.0).apply { styleClass += "faint-icon" }, label(q, "suggest-text"), spacer(),
+                    button(null, Icons.CLOSE, "btn-ghost", "btn-small") { SearchHistory.remove(q); showRecent() }.tooltip("Remove")).apply {
+                    styleClass += "suggest-row"
+                    maxWidth = 760.0
+                    onClick { field.text = q; run(q) }
+                }
+            }.toTypedArray(),
+        ))
     }
 
     private fun suggest() {
@@ -129,6 +162,7 @@ class SearchPage : StackPane(), Refreshable {
             return
         }
         lastQuery = query
+        SearchHistory.add(query)
         job?.cancel()
         results.children.clear()
         var answered = 0
