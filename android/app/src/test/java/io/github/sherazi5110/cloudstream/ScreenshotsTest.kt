@@ -156,3 +156,215 @@ class GoatArtTest {
         }
     }
 }
+
+/** "Add from phone": how links are sorted, and the phone page, code check and sending over HTTP. */
+class PhoneLinkTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5)
+
+    @Test
+    fun linksAreSortedAndSentWithTheCode() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        val k = PhoneLink.Kind.entries.associateBy { it }
+        // Stremio add-ons, CloudStream repositories (link, cloudstreamrepo://, shortcode), playlists.
+        org.junit.Assert.assertEquals(PhoneLink.Kind.STREMIO, PhoneLink.classify("https://torrentio.strem.fun/providers=yts/manifest.json"))
+        org.junit.Assert.assertEquals(PhoneLink.Kind.STREMIO, PhoneLink.classify("stremio://v3-cinemeta.strem.io/manifest.json"))
+        org.junit.Assert.assertEquals(PhoneLink.Kind.REPO, PhoneLink.classify("https://raw.githubusercontent.com/user/repo/builds/repo.json"))
+        org.junit.Assert.assertEquals(PhoneLink.Kind.REPO, PhoneLink.classify("cloudstreamrepo://raw.githubusercontent.com/user/repo/builds/repo.json"))
+        org.junit.Assert.assertEquals(PhoneLink.Kind.REPO, PhoneLink.classify("759"))
+        org.junit.Assert.assertEquals(PhoneLink.Kind.REPO, PhoneLink.classify("!abc"))
+        org.junit.Assert.assertEquals(PhoneLink.Kind.PLAYLIST, PhoneLink.classify("https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8"))
+        org.junit.Assert.assertEquals(PhoneLink.Kind.UNKNOWN, PhoneLink.classify("https://example.org/some/addon/"))
+        k.size
+
+        PhoneLink.testAddress = java.net.InetAddress.getByName("127.0.0.1")
+        try {
+            org.junit.Assert.assertTrue(PhoneLink.start())
+            val base = PhoneLink.address!!
+            org.junit.Assert.assertTrue(PhoneLink.qrUrl!!.endsWith("/?c=" + PhoneLink.code))
+            fun call(method: String, path: String, body: String? = null): Pair<Int, String> {
+                val c = java.net.URL(base + path).openConnection() as java.net.HttpURLConnection
+                c.requestMethod = method
+                if (body != null) { c.doOutput = true; c.setRequestProperty("Content-Type", "application/json"); c.outputStream.use { it.write(body.toByteArray()) } }
+                val code = c.responseCode
+                val text = (if (code < 400) c.inputStream else c.errorStream).use { it.readBytes().decodeToString() }
+                return code to text
+            }
+            // The phone's page.
+            val (pageCode, page) = call("GET", "/?c=" + PhoneLink.code)
+            org.junit.Assert.assertEquals(200, pageCode)
+            org.junit.Assert.assertTrue(page.contains("Send to Stream Goat"))
+            // A wrong code is refused; the right one sends every line, sorted.
+            val wrong = if (PhoneLink.code == "0000") "1111" else "0000"
+            org.junit.Assert.assertEquals(403, call("POST", "/send", """{"code":"$wrong","text":"759"}""").first)
+            val (ok, sent) = call("POST", "/send", """{"code":"${PhoneLink.code}","text":"https://a.example/manifest.json\n759\n"}""")
+            org.junit.Assert.assertEquals(200, ok)
+            val items = org.json.JSONObject(sent).getJSONArray("items")
+            org.junit.Assert.assertEquals(2, items.length())
+            org.junit.Assert.assertEquals("Stremio add-on", items.getJSONObject(0).getString("kind"))
+            org.junit.Assert.assertEquals("CloudStream repository", items.getJSONObject(1).getString("kind"))
+            org.junit.Assert.assertEquals(404, call("GET", "/other").first)
+            // Five wrong codes in a row change the code (guessing isn't practical).
+            val before = PhoneLink.code
+            repeat(5) { call("POST", "/send", """{"code":"x","text":"759"}""") }
+            org.junit.Assert.assertNotEquals(before, PhoneLink.code)
+        } finally {
+            PhoneLink.stop()
+            PhoneLink.testAddress = null
+        }
+    }
+}
+
+/** "Add from phone" on a 1080p TV: the QR code, the address and code, and a link waiting to be added. */
+class AddFromPhoneScreenTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.NEXUS_10.copy(screenWidth = 1920, screenHeight = 1080,
+        density = com.android.resources.Density.XHIGH, orientation = com.android.resources.ScreenOrientation.LANDSCAPE), maxPercentDifference = 0.1)
+
+    @Test
+    fun tv() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+        PhoneLink.testAddress = java.net.InetAddress.getByName("127.0.0.1")
+        PhoneLink.fixedCode = "4821"
+        PhoneLink.received.clear()
+        PhoneLink.received += PhoneLink.Received(1, "https://torrentio.strem.fun/lite/manifest.json", PhoneLink.Kind.STREMIO)
+        PhoneLink.received += PhoneLink.Received(2, "https://raw.githubusercontent.com/user/repo/builds/repo.json", PhoneLink.Kind.REPO,
+            PhoneLink.ADDED, "Example repo: open it to install its extensions", "https://raw.githubusercontent.com/user/repo/builds/repo.json", "Example repo")
+        try {
+            paparazzi.snapshot("add-from-phone") {
+                CloudStreamTheme {
+                    androidx.compose.runtime.CompositionLocalProvider(io.github.sherazi5110.cloudstream.ui.LocalWide provides true) {
+                        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.background(io.github.sherazi5110.cloudstream.ui.Palette.background)) {
+                            io.github.sherazi5110.cloudstream.ui.AddFromPhoneScreen()
+                        }
+                    }
+                }
+            }
+        } finally {
+            PhoneLink.stop(); PhoneLink.testAddress = null; PhoneLink.fixedCode = null; PhoneLink.received.clear()
+        }
+    }
+}
+
+/** After a crash, the next start shows what went wrong (Copy / Share), readable on a TV. */
+class CrashDialogTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.NEXUS_10.copy(screenWidth = 1920, screenHeight = 1080,
+        orientation = com.android.resources.ScreenOrientation.LANDSCAPE), maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+        Nav.stack.clear()
+    }
+
+    @Test
+    fun crashReport() {
+        CrashReport.pending = """
+            Stream Goat closed because of an error
+            Stream Goat 8.0.1 on Amazon AFTMM, Android 9 (API 28), armeabi-v7a
+            When: 2026-11-14 10:58:12
+            Was playing: AniList: Frieren (Episode 1); source Gravix [M3U8] from 127.0.0.1
+            Thread: main
+
+            java.lang.IllegalStateException: example
+            	at org.videolan.libvlc.AWindow.attachViews(AWindow.java:224)
+            	at io.github.sherazi5110.cloudstream.player.PlayerController.play(PlayerController.kt:222)
+        """.trimIndent()
+        paparazzi.snapshot("crash-dialog") { CloudStreamTheme { io.github.sherazi5110.cloudstream.ui.CrashDialog() } }
+        CrashReport.pending = null
+    }
+}
+
+/** Google Drive sign-in on a 1080p TV: the code to enter at google.com/device, readable from the sofa, with a QR code. */
+class CloudSignInTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.NEXUS_10.copy(screenWidth = 1920, screenHeight = 1080,
+        orientation = com.android.resources.ScreenOrientation.LANDSCAPE), maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+    }
+
+    @Test
+    fun signInCode() {
+        val signIn = CloudBackup.SignIn("GQV-XHF-RNL", "https://www.google.com/device", "dev", 5, Long.MAX_VALUE)
+        paparazzi.snapshot("cloud-sign-in") {
+            CloudStreamTheme {
+                io.github.sherazi5110.cloudstream.ui.SimpleDialog("Sign in with Google", {}) {
+                    io.github.sherazi5110.cloudstream.ui.SignInBody(signIn, null)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * An extension listing the same title twice in a Home row once closed the app ("Key … was already used"; reported
+ * from a Lenovo tablet with an aoneroom extension). The row must show both, and keys must stay unique.
+ */
+class DuplicateItemsTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5, maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+    }
+
+    @Test
+    fun keysStayUnique() {
+        val keys = io.github.sherazi5110.cloudstream.ui.uniqueKeys(listOf("a", "b", "a", "a#2", "a")) { it }
+        org.junit.Assert.assertEquals(listOf("a", "b", "a#2", "a#2#2", "a#3"), keys)
+        org.junit.Assert.assertEquals(keys.size, keys.toSet().size)
+    }
+
+    @Test
+    fun homeRowWithTheSameTitleTwice() {
+        val api = object : com.lagradost.cloudstream3.MainAPI() { override var name = "Test"; override var mainUrl = "https://example.com" }
+        val url = "https://api3.aoneroom.com/2034847458500429816"
+        val item = api.newMovieSearchResponse("Same title", url, com.lagradost.cloudstream3.TvType.Movie)
+        val other = api.newMovieSearchResponse("Other title", "https://example.com/other", com.lagradost.cloudstream3.TvType.Movie)
+        val section = io.github.sherazi5110.cloudstream.Engine.HomeSection(0, api, com.lagradost.cloudstream3.MainPageData("Trending", ""),
+            com.lagradost.cloudstream3.HomePageList("Trending", listOf(item, other, item)))
+        paparazzi.snapshot("home-row-duplicates") {
+            CloudStreamTheme { io.github.sherazi5110.cloudstream.ui.CatalogRow(section, 112.dp) }
+        }
+    }
+}
+
+/** Search with recent searches (this profile's), to search again with one tap. */
+class RecentSearchesTest {
+    @get:Rule
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.NEXUS_10.copy(orientation = com.android.resources.ScreenOrientation.LANDSCAPE), maxPercentDifference = 0.1)
+
+    @Before
+    fun setUp() {
+        App::class.java.getDeclaredField("context").apply { isAccessible = true }.set(App, paparazzi.context)
+        ThemeState.load()
+    }
+
+    @Test
+    fun newestFirstWithoutRepeats() {
+        var list = emptyList<String>()
+        listOf("Frieren", "Heart of the Beast", "frieren ", "Student of the Year").forEach { list = SearchHistory.merge(list, it) }
+        org.junit.Assert.assertEquals(listOf("Student of the Year", "frieren", "Heart of the Beast"), list)
+        org.junit.Assert.assertEquals(20, (1..30).fold(emptyList<String>()) { l, n -> SearchHistory.merge(l, "q$n") }.size)
+    }
+
+    @Test
+    fun recentSearches() {
+        paparazzi.snapshot("search-recent") {
+            CloudStreamTheme {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.background(io.github.sherazi5110.cloudstream.ui.Palette.background)) {
+                    io.github.sherazi5110.cloudstream.ui.RecentSearches({}, listOf("Student of the Year", "Frieren", "Heart of the Beast")) {}
+                }
+            }
+        }
+    }
+}

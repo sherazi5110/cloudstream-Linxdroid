@@ -31,6 +31,8 @@ sealed interface Screen {
     /** A Settings section opened on its own (portrait). */
     data class SettingsPage(val section: String) : Screen
     data class Repository(val url: String, val name: String) : Screen
+    /** Extensions → Add from phone: a QR code; links sent from a phone are added here. */
+    data object AddFromPhone : Screen
     /** Settings → Providers → Test all extensions. */
     data object ProviderTests : Screen
 }
@@ -44,6 +46,16 @@ object Nav {
     var searchQuery by mutableStateOf("")
     /** The search that ran (Enter or a suggestion); typing alone only shows suggestions. */
     var searchSubmitted by mutableStateOf("")
+    /** Search only this extension (Home's Search button); null searches every extension (the Search tab). */
+    var searchScope by mutableStateOf<String?>(null)
+    /** The extension Home shows, for Home's Search button. */
+    var homeProvider: String? = null
+
+    /** Home's Search button: searches the extension Home shows. */
+    fun searchHome() {
+        select(Tab.SEARCH)
+        searchScope = homeProvider
+    }
 
     val top: Screen? get() = stack.lastOrNull()
 
@@ -71,6 +83,8 @@ object Nav {
     }
 
     fun select(tab: Tab) {
+        // The Search tab itself searches every extension (Home's Search button narrows it afterwards).
+        if (tab == Tab.SEARCH) searchScope = null
         // Kids profiles have no Settings or Extensions pages unless a parent unlocks them.
         if (tab == Tab.EXTENSIONS || tab == Tab.MORE) ProfileUi.guarded { stack.clear(); this.tab = tab }
         else { stack.clear(); this.tab = tab }

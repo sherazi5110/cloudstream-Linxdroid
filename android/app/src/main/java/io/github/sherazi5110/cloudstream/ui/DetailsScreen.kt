@@ -127,6 +127,13 @@ private fun Details(api: MainAPI, r: LoadResponse) {
     var dub by remember(r) { mutableStateOf(dubs.firstOrNull()) }
     val seasons = remember(playables, dub) { playables.filter { it.dub == dub }.groupBy { it.season } }
     val target = remember(libraryVersion, r) { Playback.resumeTarget(api, r) }
+    // Start finding the sources of what Play would start (after a moment on the page), so pressing it starts sooner.
+    LaunchedEffect(target?.data) {
+        val t = target ?: return@LaunchedEffect
+        if (api is io.github.sherazi5110.cloudstream.OfflineApi) return@LaunchedEffect
+        kotlinx.coroutines.delay(1200)
+        io.github.sherazi5110.cloudstream.Engine.prefetch(api, t.data)
+    }
     var season by remember(r) { mutableStateOf(target?.season ?: seasons.keys.firstOrNull()) }
     val episodes = seasons[season].orEmpty()
     val bookmarked = remember(libraryVersion, r) { Library.isBookmarked(api.name, r.url) }
@@ -269,13 +276,13 @@ private fun Details(api: MainAPI, r: LoadResponse) {
                         ) { season = keys[it] }
                     }
                     if (wide) {
-                        items(episodes.chunked(columns), key = { row -> "eps|${row.first().dub}|${row.first().data}" }) { row ->
+                        uniqueItems(episodes.chunked(columns), key = { row -> "eps|${row.first().dub}|${row.first().data}" }) { row ->
                             Row(Modifier.padding(horizontal = edge, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                                 row.forEach { ep -> EpisodeCard(api, r, ep, libraryVersion, Modifier.weight(1f)) }
                                 repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                             }
                         }
-                    } else items(episodes, key = { "ep|${it.dub}|${it.data}" }) { ep ->
+                    } else uniqueItems(episodes, key = { "ep|${it.dub}|${it.data}" }) { ep ->
                         EpisodeRow(api, r, ep, libraryVersion)
                     }
                 }
@@ -298,12 +305,12 @@ private fun Details(api: MainAPI, r: LoadResponse) {
                         }
                     }
                 }
-                r.recommendations?.filter(ContentFilter::allows)?.takeIf { it.isNotEmpty() }?.let { recs ->
+                r.recommendations?.let(ContentFilter::filter)?.takeIf { it.isNotEmpty() }?.let { recs ->
                     item(key = "recs") {
                         Column(Modifier.padding(top = 24.dp)) {
                             SectionTitle("More like this", Modifier.padding(horizontal = edge))
                             LazyRow(contentPadding = PaddingValues(horizontal = edge, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                items(recs, key = { it.url }) { item -> PosterCard(item, if (wide) 140.dp else 108.dp) { openTitle(item) } }
+                                uniqueItems(recs, key = { it.url }) { item -> PosterCard(item, if (wide) 140.dp else 108.dp) { openTitle(item) } }
                             }
                         }
                     }

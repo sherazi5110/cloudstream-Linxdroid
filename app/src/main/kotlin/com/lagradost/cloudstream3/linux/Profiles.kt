@@ -149,7 +149,7 @@ object Profiles {
     fun file(name: String): String = current.id.let { if (it == DEFAULT) name else "$name@$it" }
 
     /** Preference files that belong to a profile. */
-    val PROFILE_FILES = listOf("library", "home_catalogs", "profile_settings")
+    val PROFILE_FILES = listOf("library", "home_catalogs", "profile_settings", "search_history")
 }
 
 /** Applies the current kids profile's rules; everything passes for other profiles. */
@@ -175,18 +175,33 @@ object ContentFilter {
     }
 
     /**
-     * Single titles are only filtered in kids profiles. Like the official app, a grown-up profile sees every
-     * result of the extensions it has (the adult setting hides adult *extensions*, not titles).
+     * Single titles: in kids profiles by the kids rules; and while adult content is off (Settings → Profiles), titles
+     * that are plainly pornographic, which ordinary film extensions sometimes return (see [AdultTitles]).
      */
     fun allows(item: SearchResponse): Boolean {
+        if (!nsfwAllowed && (item.type == TvType.NSFW || AdultTitles.explicit(item.name))) return false
         val f = filter ?: return true
-        if (item.type == TvType.NSFW) return false
         if (item.type != null && item.type!!.name !in f.types) return false
         return !hasBlockedWord(f, item.name)
     }
 
+    /**
+     * A row of titles (one extension's search results, a Home row, recommendations): single titles as in [allows],
+     * and while adult content is off, a row that is plainly an adult catalogue goes completely (its other titles
+     * often have harmless-looking names).
+     */
+    fun filter(items: List<SearchResponse>): List<SearchResponse> {
+        if (!nsfwAllowed) {
+            val flagged = items.count { it.type == TvType.NSFW || AdultTitles.explicit(it.name) }
+            if (flagged >= 3 && flagged * 4 >= items.size) return emptyList()
+        }
+        return items.filter(::allows)
+    }
+
     /** For a details page: rating, type, title, tags and plot. */
     fun allows(response: LoadResponse): Boolean {
+        if (!nsfwAllowed && (response.type == TvType.NSFW || AdultTitles.explicit(response.name) ||
+                response.tags.orEmpty().any { AdultTitles.adultTag(it) })) return false
         val f = filter ?: return true
         if (response.type == TvType.NSFW || response.type.name !in f.types) return false
         val age = response.contentRating?.let(::ageOf)
@@ -212,4 +227,32 @@ object ContentFilter {
             else -> Regex("(\\d{1,2})").find(r)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 0..21 }
         }
     }
+}
+
+/**
+ * Plainly pornographic titles, for when adult content is off. Ordinary film extensions (MovieBox and others)
+ * return such titles without marking them adult, so the title is all there is to go on. One strong word is enough;
+ * milder words count only in pairs, so "Sex and the City", "Sex Education", "Stepmom", "Sexy Beast" or "xXx" stay.
+ */
+object AdultTitles {
+    private const val B = "(?<![\\p{L}\\p{N}])"
+    private const val E = "(?![\\p{L}\\p{N}])"
+    private val strong = Regex(B + "(porn\\w*|hentai|milfs?|puss(y|ies)|fuck\\w*|blowjobs?|cumshots?|creampies?|gangbangs?|bukkake|" +
+        "deepthroat\\w*|handjobs?|footjobs?|onlyfans|camgirls?|18 ?yo|bdsm|dildos?|masturbat\\w*|squirt\\w*|boobs|titties|busty|" +
+        "horny|sluts?|slutty|nsfw)" + E, RegexOption.IGNORE_CASE)
+    // "xxx" alone is mild: xXx (Vin Diesel) and MaXXXine are ordinary films.
+    private val mild = Regex(B + "(\\p{L}*x{3,}\\p{L}*|sex|sexy|naked|nude|teens?|step-?(sis|sister|bro|brother|son|daughter|dad|mom|mother)s?|teases?|teasing|" +
+        "stockings|lingerie|erotic\\w*|seduc\\w*|pleasure|hardcore|lesbians?|compilation|stripper|strip|affair|wife|wives|virgin|" +
+        "bed|massage|cheating|threesome|kinky|orgy|shower)" + E, RegexOption.IGNORE_CASE)
+
+    fun explicit(title: String?): Boolean {
+        if (title.isNullOrBlank()) return false
+        if (strong.containsMatchIn(title)) return true
+        return mild.findAll(title).map { it.value.lowercase() }.distinct().count() >= 2
+    }
+
+    private val tags = setOf("hentai", "xxx", "porn", "adult", "erotica", "18+", "nsfw", "r18", "r-18", "jav")
+
+    /** A details page tagged as adult content by the site. */
+    fun adultTag(tag: String) = tag.trim().lowercase() in tags
 }

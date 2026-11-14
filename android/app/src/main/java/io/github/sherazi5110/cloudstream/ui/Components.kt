@@ -296,3 +296,38 @@ fun PosterRating(item: SearchResponse, modifier: Modifier = Modifier) {
         .border(1.dp, Palette.tmdb.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
         .padding(horizontal = 6.dp, vertical = 2.dp))
 }
+
+/**
+ * Keys for a lazy list or grid that stay unique even when an extension returns the same item twice: Compose
+ * closes the app on a repeated key ("Key … was already used"). A repeat gets "#2", "#3"…, so every item still shows.
+ */
+fun <T> uniqueKeys(items: List<T>, key: (T) -> Any): List<String> {
+    val used = HashSet<String>(items.size * 2)
+    return items.map { item ->
+        val base = key(item).toString()
+        var k = base
+        var n = 1
+        while (!used.add(k)) k = "$base#${++n}"
+        k
+    }
+}
+
+/** items(…) with keys that can't repeat (see uniqueKeys). */
+inline fun <T> androidx.compose.foundation.lazy.LazyListScope.uniqueItems(
+    items: List<T>,
+    noinline key: (T) -> Any,
+    crossinline content: @Composable androidx.compose.foundation.lazy.LazyItemScope.(T) -> Unit,
+) {
+    val keys = uniqueKeys(items, key)
+    items(items.size, key = { keys[it] }) { content(items[it]) }
+}
+
+/** items(…) with keys that can't repeat, for grids (see uniqueKeys). */
+inline fun <T> androidx.compose.foundation.lazy.grid.LazyGridScope.uniqueItems(
+    items: List<T>,
+    noinline key: (T) -> Any,
+    crossinline content: @Composable androidx.compose.foundation.lazy.grid.LazyGridItemScope.(T) -> Unit,
+) {
+    val keys = uniqueKeys(items, key)
+    items(items.size, key = { keys[it] }) { content(items[it]) }
+}

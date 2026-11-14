@@ -148,9 +148,9 @@ class StremioProfilesTest {
         assertEquals(null, Profiles.unlockFor(Profiles.all().first { it.id == kids.id }), "going to a kids profile is free")
         assertEquals(listOf("Pixel City"), Library.history().map { it.name })
         assertTrue(ContentFilter.allows(horror))
-        // Adult titles: like the official app, grown-ups see every result of their extensions (the
-        // setting hides adult extensions, not titles); kids never do.
-        assertTrue(ContentFilter.allows(nsfw))
+        // Adult titles: hidden while adult content is off (also from ordinary extensions), shown when it's on;
+        // kids never see them.
+        assertFalse(ContentFilter.allows(nsfw))
         Settings.showNsfw = true
         assertTrue(ContentFilter.allows(nsfw))
         Profiles.switchTo(kids.id)

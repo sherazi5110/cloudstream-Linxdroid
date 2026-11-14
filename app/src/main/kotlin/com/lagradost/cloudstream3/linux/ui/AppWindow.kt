@@ -40,7 +40,7 @@ import kotlin.system.exitProcess
 
 object AppInfo {
     const val NAME = "Stream Goat"
-    const val VERSION = "8.0.0"
+    const val VERSION = "8.0.1"
     const val CREDIT = "Syed Ali Hamza"
 }
 
@@ -182,7 +182,7 @@ class AppWindow(val stage: Stage) : StackPane() {
             val item = StackPane(icon(tab.icon, 22.0)).apply {
                 styleClass += "rail-item"
                 if (tab == currentTab) styleClass += "active"
-                onClick { show(tab) }
+                onClick { if (tab == Tab.SEARCH) searchFrom(tab) else show(tab) }
                 tooltip(tab.label)
             }
             navItems[tab] = item
@@ -272,6 +272,13 @@ class AppWindow(val stage: Stage) : StackPane() {
         topBar.pageChanged(node, currentTab)
     }
 
+    /** Home's Search button: searches only the extension Home shows; elsewhere, every extension. */
+    fun searchFrom(tab: Tab) {
+        val only = if (tab == Tab.HOME) (pages[Tab.HOME] as? HomePage)?.searchProvider else null
+        show(Tab.SEARCH)
+        (pages[Tab.SEARCH] as? SearchPage)?.scopeTo(only)
+    }
+
     /** Opens Search with [query] already running (e.g. a similar title from TMDB). */
     fun search(query: String) {
         show(Tab.SEARCH)
@@ -352,6 +359,8 @@ class AppWindow(val stage: Stage) : StackPane() {
             // The splash stays up while extensions load: at least briefly, at most a few seconds.
             val loading = launch {
                 val failures = withContext(Engine.dispatcher) { PluginManager.loadAll() }
+                // Google Drive backup: when something changed, every 15 minutes.
+                com.lagradost.cloudstream3.linux.CloudBackup.startAuto()
                 if (failures.isNotEmpty()) {
                     Toasts.show("${failures.size} extension(s) failed to load", "Details" to { show(Tab.EXTENSIONS) }, 6.0)
                 }
