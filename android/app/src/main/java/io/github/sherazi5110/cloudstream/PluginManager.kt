@@ -16,6 +16,7 @@ import dalvik.system.PathClassLoader
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
@@ -67,6 +68,22 @@ object PluginManager {
     /** For other provider sources (Stremio add-ons, profile switches) to refresh screens too. */
     fun bumpVersion() = changed()
 
+    /**
+     * Loading (class verification, each extension's setup) is CPU work: as many at once as the device has cores,
+     * at low priority, so the screen stays responsive on TV boxes (it once ran 64 at once).
+     */
+    private suspend fun loadOne(data: PluginData) = withContext(loading) {
+        runCatching { android.os.Process.setThreadPriority(LOAD_PRIORITY) }
+        try {
+            val file = File(data.filePath)
+            if (!file.exists()) failures[data.internalName] = IllegalStateException("Missing file ${data.filePath}")
+            else loadPlugin(file, data)
+        } finally {
+            runCatching { android.os.Process.setThreadPriority(Engine.EXTENSION_PRIORITY) }
+        }
+        _progress.value = _progress.value.let { it.copy(done = it.done + 1) }
+    }
+
     /** Extensions loading at start: one per core (2 to 4), see loadAll. */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val loading = Engine.dispatcher.limitedParallelism(Runtime.getRuntime().availableProcessors().coerceIn(2, 4))
@@ -89,27 +106,19 @@ object PluginManager {
     }
 
     /**
-     * Loads every installed plugin, like upstream's loadAllOnlinePlugins + loadAllLocalPlugins,
-     * but in parallel: first-run .cs3 translation is CPU bound and dominates startup.
+     * Loads every installed plugin, in the official app's order (MainActivity): first the extension Home shows,
+     * so Home appears at once ([onHomeLoaded], the official mainPluginsLoadedEvent), then all the others.
      */
-    suspend fun loadAll(): Map<String, Throwable> = coroutineScope {
+    suspend fun loadAll(onHomeLoaded: (Boolean) -> Unit = {}): Map<String, Throwable> = coroutineScope {
         val all = installed()
         _progress.value = LoadProgress(0, all.size)
-        all.map { data ->
-            async(loading) {
-                // Loading (class verification, each extension's setup) is CPU work: as many at once as the device has
-                // cores, at low priority, so the start screen stays responsive on TV boxes (it once ran 64 at once).
-                runCatching { android.os.Process.setThreadPriority(LOAD_PRIORITY) }
-                try {
-                    val file = File(data.filePath)
-                    if (!file.exists()) failures[data.internalName] = IllegalStateException("Missing file ${data.filePath}")
-                    else loadPlugin(file, data)
-                } finally {
-                    runCatching { android.os.Process.setThreadPriority(Engine.EXTENSION_PRIORITY) }
-                }
-                _progress.value = _progress.value.let { it.copy(done = it.done + 1) }
-            }
-        }.awaitAll()
+        val home = Settings.homePluginFile?.let { path -> all.find { it.filePath == path } }
+        if (home != null) {
+            loadOne(home)
+            changed()
+        }
+        onHomeLoaded(home != null && loaded.containsKey(File(home.filePath).absolutePath))
+        all.filter { it !== home }.map { data -> async(loading) { loadOne(data) } }.awaitAll()
         Log.i("plugins", "loaded ${loaded.size}/${all.size} extensions")
         changed()
         failures

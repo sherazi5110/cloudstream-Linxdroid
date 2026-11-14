@@ -59,13 +59,13 @@ object App {
         // Extensions that add or remove providers (Ultima, StreamPlay…) fire the official app's event: refresh.
         com.lagradost.cloudstream3.MainActivity.afterPluginsLoadedEvent += { PluginManager.bumpVersion() }
         scope.launch {
-            val failures = PluginManager.loadAll()
+            // Like the official app: Home's extension first (mainPluginsLoadedEvent), then the rest.
+            val failures = PluginManager.loadAll(onHomeLoaded = { ok ->
+                runCatching { com.lagradost.cloudstream3.MainActivity.mainPluginsLoadedEvent.invoke(ok) }
+            })
             if (failures.isNotEmpty()) Log.w("plugins", "Failed: ${failures.keys}")
-            // Like the official app: extensions waiting for every extension to load run now.
-            runCatching {
-                com.lagradost.cloudstream3.MainActivity.mainPluginsLoadedEvent.invoke(true)
-                com.lagradost.cloudstream3.MainActivity.afterPluginsLoadedEvent.invoke(true)
-            }
+            // Extensions waiting for every extension to load run now.
+            runCatching { com.lagradost.cloudstream3.MainActivity.afterPluginsLoadedEvent.invoke(true) }
             // Carry on with downloads that were running when the app closed.
             runCatching { Downloads.init() }
             // Updates and the update check wait until the first screens have settled.

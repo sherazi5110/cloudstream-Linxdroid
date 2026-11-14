@@ -28,7 +28,7 @@ object Settings {
         "auto_play",
         "auto_play_next", "skip_buttons", "auto_skip", "subtitle_language", "preferred_quality", "player_volume", "hero_slider", "anti_spoiler",
         "player_equalizer", "audio_language", "subtitle_size", "subtitle_color", "subtitle_outline", "subtitle_background",
-        "player_zoom", "last_home_provider", "show_nsfw",
+        "player_zoom", "last_home_provider", "home_plugin_file", "show_nsfw",
         "theme_mode", "theme_accent", "theme_wallpaper", "theme_wallpaper_dim", "theme_wallpaper_blur",
     )
 
@@ -164,6 +164,11 @@ object Settings {
     var lastHomeProvider: String?
         get() = string("last_home_provider", "").ifBlank { null }
         set(v) = put("last_home_provider", v ?: "")
+
+    /** The extension file Home's provider comes from: loaded first at start, like the official app. */
+    var homePluginFile: String?
+        get() = string("home_plugin_file", "").ifBlank { null }
+        set(v) = put("home_plugin_file", v ?: "")
 
     /** Extension languages to show (lowercase codes such as "en", "hi"); empty = all, like the official app. */
     var extensionLanguages: Set<String>
