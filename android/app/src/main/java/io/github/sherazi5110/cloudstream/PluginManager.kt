@@ -67,6 +67,13 @@ object PluginManager {
     /** For other provider sources (Stremio add-ons, profile switches) to refresh screens too. */
     fun bumpVersion() = changed()
 
+    /** Extensions loading at start: one per core (2 to 4), see loadAll. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val loading = Engine.dispatcher.limitedParallelism(Runtime.getRuntime().availableProcessors().coerceIn(2, 4))
+
+    /** Below the screen's threads; Android 10+ keeps such threads in the foreground group, older ones get 5. */
+    private val LOAD_PRIORITY = if (android.os.Build.VERSION.SDK_INT >= 29) android.os.Process.THREAD_PRIORITY_BACKGROUND else 5
+
     /** register* calls in Plugin.load mutate global lists; translation and class loading stay parallel. */
     private val registerLock = Any()
 
@@ -89,10 +96,17 @@ object PluginManager {
         val all = installed()
         _progress.value = LoadProgress(0, all.size)
         all.map { data ->
-            async(Engine.dispatcher) {
-                val file = File(data.filePath)
-                if (!file.exists()) failures[data.internalName] = IllegalStateException("Missing file ${data.filePath}")
-                else loadPlugin(file, data)
+            async(loading) {
+                // Loading (class verification, each extension's setup) is CPU work: as many at once as the device has
+                // cores, at low priority, so the start screen stays responsive on TV boxes (it once ran 64 at once).
+                runCatching { android.os.Process.setThreadPriority(LOAD_PRIORITY) }
+                try {
+                    val file = File(data.filePath)
+                    if (!file.exists()) failures[data.internalName] = IllegalStateException("Missing file ${data.filePath}")
+                    else loadPlugin(file, data)
+                } finally {
+                    runCatching { android.os.Process.setThreadPriority(Engine.EXTENSION_PRIORITY) }
+                }
                 _progress.value = _progress.value.let { it.copy(done = it.done + 1) }
             }
         }.awaitAll()

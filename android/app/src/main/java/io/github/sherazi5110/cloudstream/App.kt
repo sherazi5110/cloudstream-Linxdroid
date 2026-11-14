@@ -68,6 +68,8 @@ object App {
             }
             // Carry on with downloads that were running when the app closed.
             runCatching { Downloads.init() }
+            // Updates and the update check wait until the first screens have settled.
+            kotlinx.coroutines.delay(20_000)
             startupChecks()
         }
     }

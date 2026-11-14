@@ -119,10 +119,15 @@ object RepositoryManager {
         Repository(it.iconUrl, it.name, it.description, it.manifestVersion, it.pluginLists)
     }
 
-    /** Adds a repository, like the official app (MegaRepo, StreamCenter add their repositories this way). */
+    /**
+     * Adds a repository like the official app: stored as given, nothing fetched (MegaRepo and StreamCenter call this
+     * for each of their repositories on every start). Screens refresh only if it is new.
+     */
     suspend fun addRepository(repository: RepositoryData) {
-        runCatching { AppRepos.addRepository(repository.url) }
-        AppPlugins.bumpVersion()
+        val added = AppRepos.addRepositoryData(
+            com.lagradost.cloudstream3.linux.RepositoryData(repository.iconUrl, repository.name, repository.url, repository.description)
+        )
+        if (added) AppPlugins.bumpVersion()
     }
 
     suspend fun removeRepository(context: Context, repository: RepositoryData) {

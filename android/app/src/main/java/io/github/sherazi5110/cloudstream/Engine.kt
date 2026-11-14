@@ -62,10 +62,17 @@ data class SearchBatch(val api: MainAPI, val results: List<SearchResponse>, val 
 object Engine {
     private val threads = AtomicInteger()
 
-    /** Extension code runs on its own pool so a misbehaving extension cannot starve the UI or IO. */
+    /**
+     * Extension code runs on its own pool so a misbehaving extension cannot starve the UI or IO. Its threads run
+     * a little below normal priority, so the screen stays smooth while extensions parse pages.
+     */
     val dispatcher = Executors.newFixedThreadPool(64) { r ->
-        Thread(r, "extension-${threads.incrementAndGet()}").apply { isDaemon = true }
+        Thread({ runCatching { android.os.Process.setThreadPriority(EXTENSION_PRIORITY) }; r.run() },
+            "extension-${threads.incrementAndGet()}").apply { isDaemon = true }
     }.asCoroutineDispatcher()
+
+    /** Slightly below normal (0); 10 would be "background". */
+    const val EXTENSION_PRIORITY = 3
 
     private const val DEFAULT_TIMEOUT = 45_000L
 
