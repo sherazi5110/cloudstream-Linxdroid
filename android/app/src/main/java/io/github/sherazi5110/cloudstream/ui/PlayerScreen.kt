@@ -39,7 +39,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AspectRatio
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ClosedCaption
@@ -226,14 +225,8 @@ fun PlayerScreen(screen: Screen.Player) {
             }
     ) {
         // A new view per playback (next episode replaces the controller).
-        key(c, c.gpuView) {
-            // Anime enhance: the GPU view (it does the zoom modes and pinch itself); otherwise libVLC's own view.
-            if (c.gpuView) AndroidView(
-                factory = { ctx -> io.github.sherazi5110.cloudstream.player.EnhancedVideoView(ctx).also { c.attachEnhanced(it) } },
-                update = { it.pinch = pinch },
-                onRelease = { c.detach(it) },
-                modifier = Modifier.fillMaxSize(),
-            ) else AndroidView(
+        key(c) {
+            AndroidView(
                 factory = { ctx -> VLCVideoLayout(ctx).also { c.attach(it) } },
                 onRelease = { c.detach(it) },
                 modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = if (c.hdrSurface) 1f else pinch, scaleY = if (c.hdrSurface) 1f else pinch),
@@ -426,7 +419,6 @@ private fun Controls(c: PlayerController, onSheet: (Sheet) -> Unit, onLock: () -
                 BarButton(Icons.Filled.Translate, "Audio") { onSheet(Sheet.AUDIO) }
                 BarButton(Icons.Filled.Speed, "${c.speed}×") { onSheet(Sheet.SPEED) }
                 BarButton(Icons.Filled.AspectRatio, c.zoom.label) { onSheet(Sheet.ZOOM) }
-                BarButton(Icons.Filled.AutoAwesome, if (c.enhanceOn) "Enhance: on" else "Enhance: off") { c.toggleEnhance() }
                 c.next?.let { next -> BarButton(Icons.Filled.SkipNext, "Next episode") { Nav.replace(Screen.Player(c.api, c.response, next)) } }
             }
         }

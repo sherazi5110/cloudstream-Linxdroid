@@ -266,12 +266,12 @@ class CrashDialogTest {
             Stream Goat closed because of an error
             Stream Goat 8.0.1 on Amazon AFTMM, Android 9 (API 28), armeabi-v7a
             When: 2026-11-14 10:58:12
-            Was playing: AniList: Frieren (Episode 1); source Gravix [M3U8] from 127.0.0.1; Anime enhance on, GPU view on
+            Was playing: AniList: Frieren (Episode 1); source Gravix [M3U8] from 127.0.0.1
             Thread: main
 
             java.lang.IllegalStateException: example
             	at org.videolan.libvlc.AWindow.attachViews(AWindow.java:224)
-            	at io.github.sherazi5110.cloudstream.player.PlayerController.attachEnhanced(PlayerController.kt:470)
+            	at io.github.sherazi5110.cloudstream.player.PlayerController.play(PlayerController.kt:222)
         """.trimIndent()
         paparazzi.snapshot("crash-dialog") { CloudStreamTheme { io.github.sherazi5110.cloudstream.ui.CrashDialog() } }
         CrashReport.pending = null

@@ -56,11 +56,7 @@ object CrashReport {
         val native = if (java == null) nativeExit() else null
         val playing = prefs.getString("playing", null)
         prefs.edit().remove("playing").apply()
-        // A crash in native code while the GPU view drew the video: don't use it again on this device until
-        // the Anime enhance setting is changed (Settings → Player), so it can't keep closing the app.
-        if (native != null && playing?.contains("GPU view on") == true) Settings.gpuViewCrashed = true
-        return java ?: native?.let { it + (playing?.let { p -> "\nWas playing: $p\n" } ?: "") +
-            (if (Settings.gpuViewCrashed) "\nAnime enhance is now off on this device (Settings → Player turns it back on).\n" else "") }
+        return java ?: native?.let { it + (playing?.let { p -> "\nWas playing: $p\n" } ?: "") }
     }
 
     /** Android 11+: the system remembers why the app's last run ended, including crashes inside native code. */

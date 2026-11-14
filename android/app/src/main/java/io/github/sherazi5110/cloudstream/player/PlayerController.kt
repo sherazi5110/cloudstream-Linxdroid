@@ -197,7 +197,6 @@ class PlayerController(
         playCalledAt = android.os.SystemClock.elapsedRealtime()
         val keep = if (started) player.time.takeIf { it > 0 } ?: startAt else startAt
         current = link
-        if (!enhanceChosen) { enhanceOn = io.github.sherazi5110.cloudstream.Picture.enhance(response, link); gpu?.enhance = enhanceOn }
         matchSurface(link)
         tried += link.url
         error = null
@@ -218,7 +217,7 @@ class PlayerController(
             if (keep > 0) addOption(":start-time=${keep / 1000.0}")
         }
         io.github.sherazi5110.cloudstream.CrashReport.playing("${api.name}: ${response.name} (${playable.label}); source ${link.name} [${link.type}] from " +
-            "${runCatching { Uri.parse(link.url).host }.getOrNull() ?: "?"}; Anime enhance ${if (enhanceOn) "on" else "off"}, GPU view ${if (useGpu) "on" else "off"}")
+            "${runCatching { Uri.parse(link.url).host }.getOrNull() ?: "?"}")
         player.media = media
         media.release()
         player.play()
@@ -409,7 +408,6 @@ class PlayerController(
     fun setZoomMode(z: Zoom) {
         zoom = z
         player.videoScale = z.scale
-        gpu?.zoom = z
         Settings.playerZoom = z.name
     }
 
@@ -429,73 +427,9 @@ class PlayerController(
     }
 
     private var layout: VLCVideoLayout? = null
-    private var gpu: EnhancedVideoView? = null
-
-    /** Anime enhance for this playback: starts from Settings → Player (Auto: anime and cartoons); the ✨ button flips it. */
-    var enhanceOn by mutableStateOf(io.github.sherazi5110.cloudstream.Picture.enhance(response, null))
-        private set
-    /** The video is drawn by the GPU view (needed for enhance); kept for the rest of the playback once used. */
-    private var useGpu by mutableStateOf(enhanceOn)
-    private var enhanceChosen = false
-    /** Which view the screen shows: the GPU view, unless the video goes to the HDR surface or the chip can't do it. */
-    val gpuView: Boolean get() = useGpu && !hdrSurface && io.github.sherazi5110.cloudstream.Picture.enhanceUnsupported == null
-
-    /** The ✨ button: Anime enhance on or off for this playback (instant once the GPU view is in use). */
-    fun toggleEnhance() {
-        io.github.sherazi5110.cloudstream.Picture.enhanceUnsupported?.let { App.toast("Anime enhance isn't available on this device: $it"); return }
-        if (hdrSurface) { App.toast("Anime enhance doesn't work with HDR video (it plays on the HDR screen directly)"); return }
-        enhanceChosen = true
-        enhanceOn = !enhanceOn
-        if (enhanceOn) useGpu = true
-        gpu?.enhance = enhanceOn
-        App.toast(enhanceMessage())
-    }
-
-    private fun enhanceMessage(): String {
-        if (!enhanceOn) return "Anime enhance off"
-        val h = gpu?.videoHeight ?: 0
-        val screen = (gpu?.height ?: 0).takeIf { it > 0 } ?: App.context.resources.displayMetrics.heightPixels
-        return when {
-            h <= 0 -> "Anime enhance on"
-            screen > h * 1.15 -> "Anime enhance on: ${h}p sharpened to ${screen}p for your screen"
-            else -> "Anime enhance on, but this ${h}p video already fills your screen (little to sharpen)"
-        }
-    }
-
-    /** The GPU view: libVLC decodes into its texture, subtitles go on its layer above. */
-    fun attachEnhanced(view: EnhancedVideoView) {
-        detachAll()
-        gpu = view
-        view.enhance = enhanceOn
-        view.zoom = zoom
-        view.onSurface = { texture ->
-            if (gpu === view) try {
-                val vout = player.vlcVout
-                if (vout.areViewsAttached()) vout.detachViews()
-                vout.setVideoSurface(texture)
-                vout.setSubtitlesView(view.subtitles)
-                vout.setWindowSize(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1))
-                vout.attachViews { _, _, _, visibleWidth, visibleHeight, sarNum, sarDen -> view.setVideoSize(visibleWidth, visibleHeight, sarNum, sarDen) }
-            } catch (t: Throwable) {
-                // The video engine refused the GPU view: play on the plain view instead of failing.
-                runCatching { player.vlcVout.detachViews() }
-                view.onUnsupported?.invoke(t.message ?: t.javaClass.simpleName)
-            }
-        }
-        view.onUnsupported = { why ->
-            io.github.sherazi5110.cloudstream.Picture.enhanceUnsupported = why
-            App.toast("Anime enhance isn't available on this device: $why")
-            enhanceOn = false
-            useGpu = false   // the screen goes back to the plain view
-        }
-        view.addOnLayoutChangeListener { _, l, t, r, b, _, _, _, _ ->
-            if (gpu === view && player.vlcVout.areViewsAttached()) player.vlcVout.setWindowSize((r - l).coerceAtLeast(1), (b - t).coerceAtLeast(1))
-        }
-    }
 
     /** Detaches whichever view the video is on. */
     private fun detachAll() {
-        if (gpu != null) { runCatching { player.vlcVout.detachViews() }; gpu = null }
         if (layout != null) { player.detachViews(); layout = null }
     }
 
@@ -523,7 +457,6 @@ class PlayerController(
     private fun matchSurface(link: ExtractorLink) {
         val want = io.github.sherazi5110.cloudstream.Picture.useHdrSurface(link, screenHdr)
         if (want == hdrSurface) return
-        // On the GPU view, the screen switches to the plain view for HDR (and back) by itself.
         val l = layout ?: run { hdrSurface = want; return }
         player.detachViews()
         hdrSurface = want
@@ -532,7 +465,7 @@ class PlayerController(
     }
 
     /** A view leaving the screen: detach only if the video is still on it (the next view may already have taken over). */
-    fun detach(view: Any) { if (view === layout || view === gpu) detachAll() }
+    fun detach(view: Any) { if (view === layout) detachAll() }
 
     /** Records progress for Continue Watching and the episode list. */
     fun save(finished: Boolean = false) {

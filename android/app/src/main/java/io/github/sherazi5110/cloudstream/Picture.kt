@@ -11,25 +11,6 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
  * So an HDR source on an HDR screen plays on a SurfaceView (pinch-to-zoom is off there; the zoom modes work).
  */
 object Picture {
-    private val animatedTypes = setOf(com.lagradost.cloudstream3.TvType.Anime, com.lagradost.cloudstream3.TvType.AnimeMovie,
-        com.lagradost.cloudstream3.TvType.OVA, com.lagradost.cloudstream3.TvType.Cartoon)
-    private val animatedTags = Regex("""\b(anime|animation|animated|cartoon|donghua)\b""", RegexOption.IGNORE_CASE)
-
-    fun isAnimated(response: com.lagradost.cloudstream3.LoadResponse): Boolean =
-        response.type in animatedTypes || response.tags.orEmpty().any { animatedTags.containsMatchIn(it) }
-
-    /** Should this playback get Anime enhance (Settings → Player)? The same rule as on Windows and Linux. */
-    fun enhance(response: com.lagradost.cloudstream3.LoadResponse, link: ExtractorLink?, setting: String = Settings.animeEnhance): Boolean = when (setting) {
-        "ON" -> true
-        "OFF" -> false
-        // Auto: animated titles, unless the source is already 4K (nothing to gain).
-        else -> isAnimated(response) && (link == null || link.quality <= 1440)
-    }
-
-    /** Set when this device's graphics chip can't run the enhance shader: it isn't offered again until restart. */
-    @Volatile var enhanceUnsupported: String? =
-        if (Settings.gpuViewCrashed) "Stream Goat closed while it was drawing the video on this device (change the setting in Settings → Player to try again)" else null
-
     private val hdrWords = Regex("""(?<![a-z0-9])(hdr10\+?|hdr|dv|dovi|dolby[ ._-]?vision|hlg|bt\.?2020)(?![a-z0-9])""", RegexOption.IGNORE_CASE)
 
     fun looksHdr(link: ExtractorLink?): Boolean =
