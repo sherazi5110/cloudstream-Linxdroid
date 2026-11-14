@@ -305,7 +305,7 @@ private fun Details(api: MainAPI, r: LoadResponse) {
                         }
                     }
                 }
-                r.recommendations?.filter(ContentFilter::allows)?.takeIf { it.isNotEmpty() }?.let { recs ->
+                r.recommendations?.let(ContentFilter::filter)?.takeIf { it.isNotEmpty() }?.let { recs ->
                     item(key = "recs") {
                         Column(Modifier.padding(top = 24.dp)) {
                             SectionTitle("More like this", Modifier.padding(horizontal = edge))

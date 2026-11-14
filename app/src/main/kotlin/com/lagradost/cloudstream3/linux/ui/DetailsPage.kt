@@ -216,7 +216,7 @@ class DetailsPage(
             })
         }
         if (playables.size > 1) nodes += episodesBox.also { renderEpisodes() }
-        val recs = r.recommendations.orEmpty()
+        val recs = com.lagradost.cloudstream3.linux.ContentFilter.filter(r.recommendations.orEmpty())
         if (recs.isNotEmpty()) {
             nodes += Shelf("More like this").apply { recs.forEach { item -> add(PosterCard.of(item) { Nav.open(api, item) }) } }
         } else extra?.similar?.takeIf { it.isNotEmpty() && Metadata.extras }?.let { similar ->

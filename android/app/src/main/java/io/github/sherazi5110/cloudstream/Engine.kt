@@ -104,7 +104,7 @@ object Engine {
             Catalogs.enabled(api).forEachIndexed { position, entry ->
                 launch(dispatcher) {
                     val response = homePage(api, entry.section, 1)
-                    response?.items?.map { it.copy(list = it.list.filter(ContentFilter::allows)) }
+                    response?.items?.map { it.copy(list = ContentFilter.filter(it.list)) }
                         ?.filter { it.list.isNotEmpty() }?.forEachIndexed { i, list ->
                         send(HomeSection(p * 1_000_000 + position * 100 + i, api, entry.section, list))
                     }
@@ -129,7 +129,7 @@ object Engine {
         apis.forEach { api ->
             launch(dispatcher) {
                 val batch = try {
-                    val results = withTimeout(api.searchTimeoutMs ?: DEFAULT_TIMEOUT) { api.search(query, 1)?.items.orEmpty() }.filter(ContentFilter::allows)
+                    val results = withTimeout(api.searchTimeoutMs ?: DEFAULT_TIMEOUT) { api.search(query, 1)?.items.orEmpty() }.let(ContentFilter::filter)
                     SearchBatch(api, results, null)
                 } catch (t: Throwable) {
                     log(api, "search", t)

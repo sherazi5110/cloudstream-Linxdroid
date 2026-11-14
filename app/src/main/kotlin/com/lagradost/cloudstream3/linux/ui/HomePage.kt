@@ -503,7 +503,7 @@ class GridPage(
                 return@launch
             }
             page++
-            val added = response.items.flatMap { it.list }.filter(ContentFilter::allows).count { add(it) }
+            val added = response.items.flatMap { ContentFilter.filter(it.list) }.count { add(it) }
             // Done when the page was empty, said so, or only repeated what we already have.
             finished = added == 0 || !response.hasNext
             idle()

@@ -92,7 +92,7 @@ fun CatalogScreen(screen: Screen.Catalog) {
             loading = true
             val response = Engine.homePage(api, section, page + 1)
             val list = response?.items?.firstOrNull { it.name == screen.title } ?: response?.items?.firstOrNull()
-            val fresh = list?.list.orEmpty().filter(ContentFilter::allows).filter { n -> items.none { it.url == n.url } }
+            val fresh = ContentFilter.filter(list?.list.orEmpty()).filter { n -> items.none { it.url == n.url } }
             items.addAll(fresh)
             hasNext = response?.hasNext == true && fresh.isNotEmpty()
             page++
